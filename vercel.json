@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd user-app && npx expo export --platform web",
+  "outputDirectory": "user-app/dist",
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/user-app/dist/index.html" }
+  ]
+}
