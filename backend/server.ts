@@ -318,6 +318,38 @@ app.post('/api/reviews', async (req, res) => {
   res.status(201).json(review);
 });
 
+// ==================== DEBUG SEED ====================
+
+app.get('/api/debug/seed', async (_req, res) => {
+  try {
+    const clubs = require('./data/clubs.json');
+    let lastError = '';
+    for (const c of clubs) {
+      try {
+        await database.addClub(c);
+      } catch (e: any) {
+        lastError = `Club ${c.id}: ${e.message}`;
+        break;
+      }
+    }
+    if (lastError) {
+      return res.json({ error: lastError });
+    }
+    const events = require('./data/events.json');
+    for (const e of events) {
+      try {
+        await database.addEvent(e);
+      } catch (ex: any) {
+        lastError = `Event ${e.id}: ${ex.message}`;
+        break;
+      }
+    }
+    res.json({ message: 'Seed debug done', lastError });
+  } catch (e: any) {
+    res.json({ error: e.message });
+  }
+});
+
 // ==================== STATS ====================
 
 app.get('/api/stats', async (_req, res) => {
