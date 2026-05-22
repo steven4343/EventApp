@@ -4,7 +4,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, TextInput, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, TextInput, ActivityIndicator, Linking, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import { AdminLoginScreen } from './components/screens/AdminLoginScreen';
 import { adminApi } from './api';
@@ -96,7 +97,48 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
   const [price, setPrice] = useState('');
   const [maxCapacity, setMaxCapacity] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageData, setImageData] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      base64: true,
+      quality: 0.7,
+      aspect: [16, 9],
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.base64) {
+        setImageData(`data:${asset.mimeType};base64,${asset.base64}`);
+      } else if (asset.uri) {
+        setImageUrl(asset.uri);
+      }
+    }
+  };
+
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Camera permission is required');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      base64: true,
+      quality: 0.7,
+      aspect: [16, 9],
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.base64) {
+        setImageData(`data:${asset.mimeType};base64,${asset.base64}`);
+      } else if (asset.uri) {
+        setImageUrl(asset.uri);
+      }
+    }
+  };
+
+  const finalImage = imageData || imageUrl || 'https://picsum.photos/seed/event/400';
 
   const handleCreate = async () => {
     if (!title || !date || !location) {
@@ -112,7 +154,7 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
         location,
         category: category || 'General',
         description: description || '',
-        image: imageUrl || 'https://picsum.photos/seed/event/400',
+        image: finalImage,
         price: parseFloat(price) || 0,
         attendees: 0,
         maxCapacity: parseInt(maxCapacity) || 0,
@@ -124,7 +166,7 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
       onCreated();
       onClose();
       setTitle(''); setDate(''); setTime(''); setLocation('');
-      setCategory(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl('');
+      setCategory(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl(''); setImageData('');
     } catch (e) {
       Alert.alert('Error', 'Failed to create event');
     } finally {
@@ -144,7 +186,21 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
           <TextInput style={styles.input} placeholder="Category" value={category} onChangeText={setCategory} />
           <TextInput style={styles.input} placeholder="Price (0 for free)" value={price} onChangeText={setPrice} keyboardType="numeric" />
           <TextInput style={styles.input} placeholder="Max Capacity" value={maxCapacity} onChangeText={setMaxCapacity} keyboardType="numeric" />
-          <TextInput style={styles.input} placeholder="Image URL" value={imageUrl} onChangeText={setImageUrl} />
+          <Text style={styles.imageLabel}>Event Photo</Text>
+          <View style={styles.imagePickerRow}>
+            <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+              <Text style={styles.imagePickerText}>📁 Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.imagePickerButton} onPress={takePhoto}>
+              <Text style={styles.imagePickerText}>📷 Camera</Text>
+            </TouchableOpacity>
+            <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder="Or paste URL" value={imageUrl} onChangeText={setImageUrl} />
+          </View>
+          {(imageData || imageUrl) ? (
+            <View style={styles.imagePreviewContainer}>
+              <Image source={{ uri: imageData || imageUrl }} style={styles.imagePreview} />
+            </View>
+          ) : null}
           <TextInput style={[styles.input, styles.textArea]} placeholder="Description" value={description} onChangeText={setDescription} multiline />
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
@@ -302,7 +358,48 @@ function CreateClubModal({ visible, onClose, onCreated }: { visible: boolean; on
   const [meetingTime, setMeetingTime] = useState('');
   const [meetingLocation, setMeetingLocation] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageData, setImageData] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      base64: true,
+      quality: 0.7,
+      aspect: [4, 3],
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.base64) {
+        setImageData(`data:${asset.mimeType};base64,${asset.base64}`);
+      } else if (asset.uri) {
+        setImageUrl(asset.uri);
+      }
+    }
+  };
+
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Camera permission is required');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      base64: true,
+      quality: 0.7,
+      aspect: [4, 3],
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.base64) {
+        setImageData(`data:${asset.mimeType};base64,${asset.base64}`);
+      } else if (asset.uri) {
+        setImageUrl(asset.uri);
+      }
+    }
+  };
+
+  const finalImage = imageData || imageUrl || 'https://picsum.photos/seed/club/400';
 
   const handleCreate = async () => {
     if (!name) {
@@ -316,7 +413,7 @@ function CreateClubModal({ visible, onClose, onCreated }: { visible: boolean; on
         category: category || 'General',
         shortDescription: shortDescription || '',
         description: description || '',
-        image: imageUrl || 'https://picsum.photos/seed/club/400',
+        image: finalImage,
         members: 0,
         meetingTime: meetingTime || '',
         meetingLocation: meetingLocation || '',
@@ -329,7 +426,7 @@ function CreateClubModal({ visible, onClose, onCreated }: { visible: boolean; on
       onCreated();
       onClose();
       setName(''); setCategory(''); setShortDescription('');
-      setDescription(''); setMeetingTime(''); setMeetingLocation(''); setImageUrl('');
+      setDescription(''); setMeetingTime(''); setMeetingLocation(''); setImageUrl(''); setImageData('');
     } catch (e) {
       Alert.alert('Error', 'Failed to create club');
     } finally {
@@ -348,7 +445,21 @@ function CreateClubModal({ visible, onClose, onCreated }: { visible: boolean; on
           <TextInput style={[styles.input, styles.textArea]} placeholder="Full Description" value={description} onChangeText={setDescription} multiline />
           <TextInput style={styles.input} placeholder="Meeting Time" value={meetingTime} onChangeText={setMeetingTime} />
           <TextInput style={styles.input} placeholder="Meeting Location" value={meetingLocation} onChangeText={setMeetingLocation} />
-          <TextInput style={styles.input} placeholder="Image URL" value={imageUrl} onChangeText={setImageUrl} />
+          <Text style={styles.imageLabel}>Club Photo</Text>
+          <View style={styles.imagePickerRow}>
+            <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+              <Text style={styles.imagePickerText}>📁 Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.imagePickerButton} onPress={takePhoto}>
+              <Text style={styles.imagePickerText}>📷 Camera</Text>
+            </TouchableOpacity>
+            <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder="Or paste URL" value={imageUrl} onChangeText={setImageUrl} />
+          </View>
+          {(imageData || imageUrl) ? (
+            <View style={styles.imagePreviewContainer}>
+              <Image source={{ uri: imageData || imageUrl }} style={styles.imagePreview} />
+            </View>
+          ) : null}
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
             <TouchableOpacity style={styles.submitButton} onPress={handleCreate} disabled={submitting}><Text style={styles.submitText}>{submitting ? 'Creating...' : 'Create Club'}</Text></TouchableOpacity>
@@ -1197,6 +1308,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  imageLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  imagePickerRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  imagePickerButton: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  imagePickerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  imagePreviewContainer: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 160,
+    resizeMode: 'cover',
   },
   profileCard: {
     backgroundColor: '#fff',

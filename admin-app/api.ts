@@ -1,7 +1,7 @@
 import { Event, Club, User } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = 'https://eventapp-production-9af6.up.railway.app/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-production-9af6.up.railway.app/api';
 const ADMIN_STORAGE_KEY = 'cuz_events_admin';
 
 class AdminApi {
@@ -35,6 +35,10 @@ class AdminApi {
 
   getCurrentAdmin() {
     return this.currentAdmin;
+  }
+
+  setGuestAdmin(guest: User) {
+    this.currentAdmin = guest;
   }
 
   async logout(): Promise<void> {

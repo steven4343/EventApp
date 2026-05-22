@@ -42,6 +42,17 @@ export function AdminLoginScreen({ onLogin }: AdminLoginScreenProps) {
     }
   };
 
+  const handleGuestLogin = () => {
+    const guest = {
+      id: 'guest',
+      name: 'Guest Admin',
+      email: 'guest@cavendish.edu',
+      role: 'admin',
+    };
+    adminApi.setGuestAdmin(guest);
+    onLogin(guest);
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -82,6 +93,13 @@ export function AdminLoginScreen({ onLogin }: AdminLoginScreenProps) {
             <Text style={styles.buttonText}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.guestButton}
+            onPress={handleGuestLogin}
+          >
+            <Text style={styles.guestButtonText}>Continue as Guest</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -156,5 +174,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  guestButton: {
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  guestButtonText: {
+    color: '#64748b',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
