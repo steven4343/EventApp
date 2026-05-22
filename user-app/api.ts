@@ -1,6 +1,6 @@
 import { Event, Club } from './types';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-production-9af6.up.railway.app/api';
+const BASE_URL = process.env.API_URL || process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-production-9af6.up.railway.app/api';
 
 interface BackendEvent {
   id: string;
