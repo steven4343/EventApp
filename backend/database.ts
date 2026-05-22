@@ -167,6 +167,11 @@ class Database {
     await pool.query('DELETE FROM saved_events WHERE user_id = $1 AND event_id = $2', [userId, eventId]);
   }
 
+  async getAllUserClubs(): Promise<UserClub[]> {
+    const { rows } = await pool.query('SELECT * FROM user_clubs');
+    return rows.map(mapUserClub);
+  }
+
   async getUserClubs(userId: string): Promise<UserClub[]> {
     const { rows } = await pool.query('SELECT * FROM user_clubs WHERE user_id = $1 ORDER BY joined_at DESC', [userId]);
     return rows.map(mapUserClub);

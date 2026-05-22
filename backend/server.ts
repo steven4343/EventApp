@@ -13,8 +13,10 @@ app.use(express.json());
 // Initialize database and seed if empty
 async function initDB() {
   await database.initialize();
-  const existingEvents = await database.getEvents();
-  if (existingEvents.length === 0) {
+  const existingClubs = await database.getClubs();
+  const userClubs = await database.getAllUserClubs();
+  if (existingClubs.length === 0 || userClubs.length < 10) {
+    if (userClubs.length > 0) await database.reset();
     console.log('Resetting and seeding database...');
     await database.reset();
     const users: User[] = require('./data/users.json');
