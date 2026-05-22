@@ -1,0 +1,5 @@
+[
+  { "id": "uc_001", "userId": "user_001", "clubId": "club_10", "role": "Member", "joinedAt": "2024-09-01" },
+  { "id": "uc_002", "userId": "user_001", "clubId": "club_8", "role": "Treasurer", "joinedAt": "2024-02-15" },
+  { "id": "uc_003", "userId": "user_001", "clubId": "club_4", "role": "Member", "joinedAt": "2024-01-10" }
+]

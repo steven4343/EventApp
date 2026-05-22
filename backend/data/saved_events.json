@@ -1,0 +1,5 @@
+[
+  { "id": "saved_001", "userId": "user_001", "eventId": "event_4", "savedAt": "2025-04-10T08:00:00Z" },
+  { "id": "saved_002", "userId": "user_001", "eventId": "event_7", "savedAt": "2025-04-20T11:30:00Z" },
+  { "id": "saved_003", "userId": "user_001", "eventId": "event_5", "savedAt": "2025-04-25T14:00:00Z" }
+]

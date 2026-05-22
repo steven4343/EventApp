@@ -1,0 +1,28 @@
+[
+  {
+    "id": "user_001",
+    "name": "John Doe",
+    "email": "john.doe@student.cavendish.co.zm",
+    "studentId": "CUZ/2024/001",
+    "password": "password123",
+    "faculty": "Business",
+    "year": 3,
+    "avatar": "https://picsum.photos/seed/user/200",
+    "joinedAt": "2024-01-15",
+    "isActive": true,
+    "role": "student"
+  },
+  {
+    "id": "admin_001",
+    "name": "Admin User",
+    "email": "admin@cavendish.edu",
+    "password": "admin123",
+    "studentId": "ADMIN",
+    "faculty": "Administration",
+    "year": 0,
+    "avatar": "https://picsum.photos/seed/admin/200",
+    "joinedAt": "2020-01-01",
+    "isActive": true,
+    "role": "admin"
+  }
+]

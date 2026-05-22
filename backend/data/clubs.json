@@ -1,0 +1,183 @@
+[
+  {
+    "id": "club_1",
+    "name": "Athletics Association",
+    "category": "Sports",
+    "shortDescription": "Sports and fitness activities for all students.",
+    "description": "Organizing inter-university sports competitions and promoting fitness.",
+    "members": 156,
+    "meetingTime": "Tuesdays, 4:00 PM - 6:00 PM",
+    "meetingLocation": "Sports Complex",
+    "image": "https://picsum.photos/seed/athletics/400",
+    "leaders": [
+      { "name": "Brighton Chola", "role": "President", "email": "brighton.c@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.7,
+    "reviews": 58,
+    "established": "2018-01-15"
+  },
+  {
+    "id": "club_2",
+    "name": "Career Services",
+    "category": "Academic",
+    "shortDescription": "Career guidance and job placement support.",
+    "description": "Helping students with career planning and employment opportunities.",
+    "members": 234,
+    "meetingTime": "Mondays, 3:00 PM - 5:00 PM",
+    "meetingLocation": "Career Center",
+    "image": "https://picsum.photos/seed/career/400",
+    "leaders": [
+      { "name": "Dr. Mary Phiri", "role": "Director", "email": "mary.p@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.6,
+    "reviews": 89,
+    "established": "2015-08-20"
+  },
+  {
+    "id": "club_3",
+    "name": "Cultural Society",
+    "category": "Cultural",
+    "shortDescription": "Celebrating diversity through cultural events.",
+    "description": "Promoting cultural exchange and heritage preservation.",
+    "members": 189,
+    "meetingTime": "Fridays, 4:00 PM - 6:00 PM",
+    "meetingLocation": "Cultural Hall",
+    "image": "https://picsum.photos/seed/cultural/400",
+    "leaders": [
+      { "name": "Chola Mwansa", "role": "President", "email": "chola.m@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.8,
+    "reviews": 76,
+    "established": "2016-03-10"
+  },
+  {
+    "id": "club_4",
+    "name": "Debate Club",
+    "category": "Academic",
+    "shortDescription": "Developing critical thinking and public speaking.",
+    "description": "Competitive debates and discussion forums.",
+    "members": 45,
+    "meetingTime": "Wednesdays, 5:00 PM - 7:00 PM",
+    "meetingLocation": "Debate Chamber",
+    "image": "https://picsum.photos/seed/debate/400",
+    "leaders": [
+      { "name": "Sarah Jonga", "role": "Captain", "email": "sarah.j@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.3,
+    "reviews": 32,
+    "established": "2019-02-15"
+  },
+  {
+    "id": "club_5",
+    "name": "Entrepreneurship Club",
+    "category": "Academic",
+    "shortDescription": "Fostering innovation and business skills.",
+    "description": "Supporting student entrepreneurs and startups.",
+    "members": 78,
+    "meetingTime": "Thursdays, 4:00 PM - 6:00 PM",
+    "meetingLocation": "Innovation Hub",
+    "image": "https://picsum.photos/seed/entrepreneur/400",
+    "leaders": [
+      { "name": "Daniel Kunda", "role": "President", "email": "daniel.k@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.5,
+    "reviews": 45,
+    "established": "2020-09-01"
+  },
+  {
+    "id": "club_6",
+    "name": "Student Union (CUZASU)",
+    "category": "Social",
+    "shortDescription": "representing and serving all students.",
+    "description": "The official student government organization.",
+    "members": 1250,
+    "meetingTime": "Fridays, 2:00 PM - 4:00 PM",
+    "meetingLocation": "Student Center",
+    "image": "https://picsum.photos/seed/studentunion/400",
+    "leaders": [
+      { "name": "Precious Mulenga", "role": "President", "email": "precious.m@cavendish.edu" },
+      { "name": "Kennedy Bwalya", "role": "Secretary", "email": "kennedy.b@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.4,
+    "reviews": 156,
+    "established": "2010-01-10"
+  },
+  {
+    "id": "club_7",
+    "name": "Medical Society",
+    "category": "Academic",
+    "shortDescription": "Medical students professional development.",
+    "description": "Academic and social activities for medical students.",
+    "members": 312,
+    "meetingTime": "Tuesdays, 5:00 PM - 7:00 PM",
+    "meetingLocation": "Medical Faculty",
+    "image": "https://picsum.photos/seed/medical/400",
+    "leaders": [
+      { "name": "Dr. Grace Mwanza", "role": "Faculty Advisor", "email": "grace.m@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.8,
+    "reviews": 89,
+    "established": "2014-06-15"
+  },
+  {
+    "id": "club_8",
+    "name": "Photography Club",
+    "category": "Arts",
+    "shortDescription": "Capture moments and develop photography skills.",
+    "description": "Learn photography and showcase your work.",
+    "members": 54,
+    "meetingTime": "Saturdays, 10:00 AM - 12:00 PM",
+    "meetingLocation": "Art Studio",
+    "image": "https://picsum.photos/seed/photo/400",
+    "leaders": [
+      { "name": "David Lee", "role": "President", "email": "david.l@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.8,
+    "reviews": 45,
+    "established": "2019-03-20"
+  },
+  {
+    "id": "club_9",
+    "name": "Chess Club",
+    "category": "Games",
+    "shortDescription": "Strategic board games and competitions.",
+    "description": "Chess tournaments and strategy training.",
+    "members": 29,
+    "meetingTime": "Fridays, 3:00 PM - 5:00 PM",
+    "meetingLocation": "Student Lounge",
+    "image": "https://picsum.photos/seed/chess/400",
+    "leaders": [
+      { "name": "Marcus Williams", "role": "Club Master", "email": "marcus.w@cavendish.edu" }
+    ],
+    "status": "Pending",
+    "rating": 4.1,
+    "reviews": 15,
+    "established": "2024-01-10"
+  },
+  {
+    "id": "club_10",
+    "name": "CUZITA Club",
+    "category": "Cultural",
+    "shortDescription": "Celebrating Zambian culture and traditions.",
+    "description": "Promoting Zambian heritage through cultural events.",
+    "members": 156,
+    "meetingTime": "Fridays, 5:00 PM - 7:00 PM",
+    "meetingLocation": "Cultural Center",
+    "image": "https://picsum.photos/seed/cuzita/400",
+    "leaders": [
+      { "name": "Chanda Mwansa", "role": "President", "email": "chanda.m@cavendish.edu" }
+    ],
+    "status": "Active",
+    "rating": 4.9,
+    "reviews": 89,
+    "established": "2015-01-20"
+  }
+]

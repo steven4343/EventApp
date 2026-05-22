@@ -1,0 +1,29 @@
+[
+  {
+    "id": "ticket_001",
+    "userId": "user_001",
+    "eventId": "event_1",
+    "seat": "Section A, Row 3",
+    "status": "Confirmed",
+    "price": 50,
+    "purchasedAt": "2025-04-15T14:30:00Z"
+  },
+  {
+    "id": "ticket_002",
+    "userId": "user_001",
+    "eventId": "event_2",
+    "seat": "General Admission",
+    "status": "Used",
+    "price": 30,
+    "purchasedAt": "2025-02-20T09:15:00Z"
+  },
+  {
+    "id": "ticket_003",
+    "userId": "user_001",
+    "eventId": "event_6",
+    "seat": "VIP Section",
+    "status": "Confirmed",
+    "price": 10,
+    "purchasedAt": "2025-04-28T16:45:00Z"
+  }
+]

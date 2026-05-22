@@ -1,0 +1,85 @@
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  student_id VARCHAR(100) DEFAULT '',
+  password VARCHAR(255) NOT NULL,
+  faculty VARCHAR(255) DEFAULT '',
+  year INTEGER DEFAULT 1,
+  avatar TEXT DEFAULT '',
+  joined_at DATE DEFAULT CURRENT_DATE,
+  is_active BOOLEAN DEFAULT true,
+  role VARCHAR(20) DEFAULT 'student'
+);
+
+CREATE TABLE IF NOT EXISTS clubs (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  category VARCHAR(100) DEFAULT '',
+  short_description TEXT DEFAULT '',
+  description TEXT DEFAULT '',
+  members INTEGER DEFAULT 0,
+  meeting_time VARCHAR(255) DEFAULT '',
+  meeting_location VARCHAR(255) DEFAULT '',
+  image TEXT DEFAULT '',
+  leaders JSONB DEFAULT '[]'::jsonb,
+  status VARCHAR(20) DEFAULT 'Pending',
+  rating DECIMAL(3,1) DEFAULT 0,
+  reviews INTEGER DEFAULT 0,
+  established DATE
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  id VARCHAR(50) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  date DATE,
+  time VARCHAR(100) DEFAULT '',
+  location VARCHAR(255) DEFAULT '',
+  category VARCHAR(100) DEFAULT '',
+  club_id VARCHAR(50) REFERENCES clubs(id),
+  description TEXT DEFAULT '',
+  image TEXT DEFAULT '',
+  price DECIMAL(10,2) DEFAULT 0,
+  attendees INTEGER DEFAULT 0,
+  max_capacity INTEGER DEFAULT 0,
+  rating DECIMAL(3,1) DEFAULT 0,
+  reviews INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'Draft',
+  created_at DATE DEFAULT CURRENT_DATE,
+  created_by VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS tickets (
+  id VARCHAR(50) PRIMARY KEY,
+  user_id VARCHAR(50) NOT NULL REFERENCES users(id),
+  event_id VARCHAR(50) NOT NULL REFERENCES events(id),
+  seat VARCHAR(100) DEFAULT '',
+  status VARCHAR(20) DEFAULT 'Confirmed',
+  price DECIMAL(10,2) DEFAULT 0,
+  purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS saved_events (
+  id VARCHAR(50) PRIMARY KEY,
+  user_id VARCHAR(50) NOT NULL REFERENCES users(id),
+  event_id VARCHAR(50) NOT NULL REFERENCES events(id),
+  saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_clubs (
+  id VARCHAR(50) PRIMARY KEY,
+  user_id VARCHAR(50) NOT NULL REFERENCES users(id),
+  club_id VARCHAR(50) NOT NULL REFERENCES clubs(id),
+  role VARCHAR(100) DEFAULT 'Member',
+  joined_at DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE IF NOT EXISTS user_reviews (
+  id VARCHAR(50) PRIMARY KEY,
+  user_id VARCHAR(50) NOT NULL REFERENCES users(id),
+  item_id VARCHAR(50) NOT NULL,
+  item_type VARCHAR(20) NOT NULL,
+  rating INTEGER NOT NULL,
+  comment TEXT DEFAULT '',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
