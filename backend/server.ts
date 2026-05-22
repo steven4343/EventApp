@@ -13,8 +13,8 @@ app.use(express.json());
 // Initialize database and seed if empty
 async function initDB() {
   await database.initialize();
-  const existingUsers = await database.getUsers();
-  if (existingUsers.length === 0) {
+  const existingEvents = await database.getEvents();
+  if (existingEvents.length === 0) {
     console.log('Seeding database...');
     const users: User[] = require('./data/users.json');
     for (const u of users) await database.createUser(u);
