@@ -10,33 +10,54 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 app.use(cors());
 app.use(express.json());
 
-// Initialize database and seed if empty
-async function initDB() {
-  await database.initialize();
-  const existingClubs = await database.getClubs();
-  const userClubs = await database.getAllUserClubs();
-  if (existingClubs.length === 0 || userClubs.length < 10) {
-    if (userClubs.length > 0) await database.reset();
-    console.log('Resetting and seeding database...');
-    await database.reset();
-    const users: User[] = require('./data/users.json');
-    for (const u of users) await database.createUser(u);
-    const clubs: Club[] = require('./data/clubs.json');
-    for (const c of clubs) await database.addClub(c);
-    const events: Event[] = require('./data/events.json');
-    for (const e of events) await database.addEvent(e);
-    const tickets: Ticket[] = require('./data/tickets.json');
-    for (const t of tickets) await database.addTicket(t);
-    const savedEvents: SavedEvent[] = require('./data/saved_events.json');
-    for (const s of savedEvents) await database.addSaved(s);
-    const userClubs: UserClub[] = require('./data/user_clubs.json');
-    for (const uc of userClubs) await database.addUserClub(uc);
+// Initialize database
+database.initialize().catch(console.error);
+
+// Seed in background after server starts
+async function seedDB() {
+  try {
+    const existingClubs = await database.getClubs();
+    if (existingClubs.length > 0) {
+      const uc = await database.getAllUserClubs();
+      if (uc.length >= 10) { console.log('DB already seeded'); return; }
+      console.log('Re-seeding user_clubs...');
+      for (const u of uc) await database.removeUserClub(u.userId, u.clubId);
+    }
+    console.log('Seeding database...');
+    const users: any[] = require('./data/users.json');
+    for (const u of users) {
+      try { await database.createUser(u); } catch (e: any) { console.log('User exists:', u.id); }
+    }
+    const clubs: any[] = require('./data/clubs.json');
+    for (const c of clubs) {
+      try { await database.addClub(c); } catch (e: any) { console.log('Club exists:', c.id); }
+    }
+    const events: any[] = require('./data/events.json');
+    for (const e of events) {
+      try { await database.addEvent(e); } catch (ex: any) { console.log('Event exists:', e.id); }
+    }
+    const tickets: any[] = require('./data/tickets.json');
+    for (const t of tickets) {
+      try { await database.addTicket(t); } catch (e: any) { console.log('Ticket exists:', t.id); }
+    }
+    const savedEvents: any[] = require('./data/saved_events.json');
+    for (const s of savedEvents) {
+      try { await database.addSaved(s); } catch (e: any) { console.log('Saved exists:', s.id); }
+    }
+    const uclubs: any[] = require('./data/user_clubs.json');
+    for (const uc of uclubs) {
+      try { await database.addUserClub(uc); } catch (e: any) { console.log('UC exists:', uc.id); }
+    }
     console.log('Seed complete');
-  } else {
-    console.log('Database already seeded');
+  } catch (e) {
+    console.error('Seed failed:', e);
   }
 }
-initDB().catch(console.error);
+
+app.listen(PORT, '0.0.0.0', async () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
+  await seedDB();
+});
 
 // ==================== USER ROUTES ====================
 
@@ -416,6 +437,4 @@ app.get('/api/stats', async (_req, res) => {
   res.json(stats);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
-});
+
