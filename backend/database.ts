@@ -172,6 +172,11 @@ class Database {
     return rows.map(mapUserClub);
   }
 
+  async getUserClub(userId: string, clubId: string): Promise<UserClub | undefined> {
+    const { rows } = await pool.query('SELECT * FROM user_clubs WHERE user_id = $1 AND club_id = $2', [userId, clubId]);
+    return rows.length ? mapUserClub(rows[0]) : undefined;
+  }
+
   async addUserClub(userClub: UserClub): Promise<void> {
     await pool.query(
       `INSERT INTO user_clubs (id, user_id, club_id, role, joined_at)
@@ -180,8 +185,41 @@ class Database {
     );
   }
 
+  async updateUserClubRole(userId: string, clubId: string, role: string): Promise<void> {
+    await pool.query('UPDATE user_clubs SET role = $1 WHERE user_id = $2 AND club_id = $3', [role, userId, clubId]);
+  }
+
   async removeUserClub(userId: string, clubId: string): Promise<void> {
     await pool.query('DELETE FROM user_clubs WHERE user_id = $1 AND club_id = $2', [userId, clubId]);
+  }
+
+  async getClubPendingMembers(clubId: string): Promise<any[]> {
+    const { rows } = await pool.query(`
+      SELECT uc.*, u.name, u.email
+      FROM user_clubs uc
+      JOIN users u ON u.id = uc.user_id
+      WHERE uc.club_id = $1 AND uc.role = 'Pending'
+      ORDER BY uc.joined_at DESC
+    `, [clubId]);
+    return rows;
+  }
+
+  async approveClubMember(userId: string, clubId: string): Promise<void> {
+    await this.updateUserClubRole(userId, clubId, 'Member');
+    const club = await this.getClubById(clubId);
+    if (club) {
+      await pool.query('UPDATE clubs SET members = members + 1 WHERE id = $1', [clubId]);
+    }
+  }
+
+  async getPresidentClubs(userId: string): Promise<Club[]> {
+    const { rows } = await pool.query(`
+      SELECT c.* FROM clubs c
+      JOIN user_clubs uc ON uc.club_id = c.id
+      WHERE uc.user_id = $1 AND uc.role = 'President'
+      ORDER BY c.name
+    `, [userId]);
+    return rows.map(mapClub);
   }
 
   async addReview(review: UserReview): Promise<void> {

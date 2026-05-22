@@ -286,6 +286,36 @@ app.get('/api/user-clubs/:userId', async (req, res) => {
   res.json(clubsWithDetails);
 });
 
+app.get('/api/user-clubs/:userId/:clubId', async (req, res) => {
+  const { userId, clubId } = req.params;
+  const membership = await database.getUserClub(userId, clubId);
+  if (membership) {
+    res.json(membership);
+  } else {
+    res.status(404).json({ error: 'Not a member' });
+  }
+});
+
+app.post('/api/user-clubs/request', async (req, res) => {
+  const { userId, clubId } = req.body;
+  if (!userId || !clubId) {
+    return res.status(400).json({ error: 'userId and clubId required' });
+  }
+  const existing = await database.getUserClub(userId, clubId);
+  if (existing) {
+    return res.status(400).json({ error: 'Already requested or joined' });
+  }
+  const userClub: UserClub = {
+    id: `uc_${uuidv4()}`,
+    userId,
+    clubId,
+    role: 'Pending',
+    joinedAt: new Date().toISOString(),
+  };
+  await database.addUserClub(userClub);
+  res.status(201).json(userClub);
+});
+
 app.post('/api/user-clubs', async (req, res) => {
   const userClub: UserClub = {
     ...req.body,
@@ -300,6 +330,32 @@ app.delete('/api/user-clubs/:userId/:clubId', async (req, res) => {
   const { userId, clubId } = req.params;
   await database.removeUserClub(userId, clubId);
   res.json({ message: 'Club left' });
+});
+
+// ==================== CLUB MEMBER MANAGEMENT (President) ====================
+
+app.get('/api/clubs/:clubId/members/pending', async (req, res) => {
+  const { clubId } = req.params;
+  const members = await database.getClubPendingMembers(clubId);
+  res.json(members);
+});
+
+app.put('/api/clubs/:clubId/members/:userId/approve', async (req, res) => {
+  const { clubId, userId } = req.params;
+  await database.approveClubMember(userId, clubId);
+  res.json({ message: 'Member approved' });
+});
+
+app.delete('/api/clubs/:clubId/members/:userId/reject', async (req, res) => {
+  const { clubId, userId } = req.params;
+  await database.removeUserClub(userId, clubId);
+  res.json({ message: 'Member rejected' });
+});
+
+app.get('/api/users/:userId/president-clubs', async (req, res) => {
+  const { userId } = req.params;
+  const clubs = await database.getPresidentClubs(userId);
+  res.json(clubs);
 });
 
 // ==================== REVIEWS ROUTES ====================

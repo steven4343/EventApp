@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Club } from '../../types';
 import { userApi } from '../../api';
@@ -27,13 +27,44 @@ export function ClubDetailsScreen() {
   const { clubId } = route.params;
   const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
+  const [membership, setMembership] = useState<{ role: string } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const loadData = async () => {
+    const data = await userApi.getClubForScreenById(clubId);
+    setClub(data);
+    const mem = await userApi.getClubMembership(clubId);
+    setMembership(mem);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    userApi.getClubForScreenById(clubId).then(data => {
-      setClub(data);
-      setLoading(false);
-    });
+    loadData();
   }, [clubId]);
+
+  const handleJoin = async () => {
+    setActionLoading(true);
+    try {
+      await userApi.requestJoinClub(clubId);
+      const mem = await userApi.getClubMembership(clubId);
+      setMembership(mem);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to request join');
+    }
+    setActionLoading(false);
+  };
+
+  const handleLeave = async () => {
+    setActionLoading(true);
+    try {
+      await userApi.leaveClub(clubId);
+      setMembership(null);
+      loadData();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to leave club');
+    }
+    setActionLoading(false);
+  };
 
   if (loading) {
     return (
@@ -52,6 +83,45 @@ export function ClubDetailsScreen() {
   }
 
   const categoryColor = categoryColors[club.category] || '#6b7280';
+
+  const renderButton = () => {
+    if (!userApi.getCurrentUser()) {
+      return (
+        <TouchableOpacity style={styles.joinButton} onPress={() => navigation.navigate('Login' as never)}>
+          <Text style={styles.joinButtonText}>Sign in to Join</Text>
+        </TouchableOpacity>
+      );
+    }
+    if (actionLoading) {
+      return (
+        <View style={styles.joinButton}>
+          <ActivityIndicator color="#fff" />
+        </View>
+      );
+    }
+    if (!membership) {
+      return (
+        <TouchableOpacity style={styles.joinButton} onPress={handleJoin}>
+          <Text style={styles.joinButtonText}>Request to Join</Text>
+        </TouchableOpacity>
+      );
+    }
+    if (membership.role === 'Pending') {
+      return (
+        <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#f59e0b' }]} onPress={handleLeave}>
+          <Text style={styles.joinButtonText}>Pending Approval</Text>
+        </TouchableOpacity>
+      );
+    }
+    if (membership.role === 'Member' || membership.role === 'President') {
+      return (
+        <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#ef4444' }]} onPress={handleLeave}>
+          <Text style={styles.joinButtonText}>Leave Club</Text>
+        </TouchableOpacity>
+      );
+    }
+    return null;
+  };
 
   return (
     <View style={styles.container}>
@@ -123,9 +193,7 @@ export function ClubDetailsScreen() {
             ))}
           </View>
 
-          <TouchableOpacity style={styles.joinButton}>
-            <Text style={styles.joinButtonText}>Join Club</Text>
-          </TouchableOpacity>
+          {renderButton()}
         </View>
       </ScrollView>
     </View>

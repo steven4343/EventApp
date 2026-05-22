@@ -134,6 +134,28 @@ class AdminApi {
     await fetch(`${BASE_URL}/clubs/${id}`, { method: 'DELETE' });
   }
 
+  async getPresidentClubs(userId: string): Promise<Club[]> {
+    const res = await fetch(`${BASE_URL}/users/${userId}/president-clubs`);
+    return res.json();
+  }
+
+  async getPendingMembers(clubId: string): Promise<any[]> {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/pending`);
+    return res.json();
+  }
+
+  async approveMember(clubId: string, userId: string): Promise<void> {
+    await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/approve`, {
+      method: 'PUT',
+    });
+  }
+
+  async rejectMember(clubId: string, userId: string): Promise<void> {
+    await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/reject`, {
+      method: 'DELETE',
+    });
+  }
+
   async getPayments(status?: string): Promise<any[]> {
     const url = status ? `${BASE_URL}/payments?status=${status}` : `${BASE_URL}/payments`;
     const res = await fetch(url);

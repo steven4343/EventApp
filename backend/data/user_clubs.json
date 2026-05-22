@@ -1,5 +1,15 @@
 [
   { "id": "uc_001", "userId": "user_001", "clubId": "club_10", "role": "Member", "joinedAt": "2024-09-01" },
   { "id": "uc_002", "userId": "user_001", "clubId": "club_8", "role": "Treasurer", "joinedAt": "2024-02-15" },
-  { "id": "uc_003", "userId": "user_001", "clubId": "club_4", "role": "Member", "joinedAt": "2024-01-10" }
+  { "id": "uc_003", "userId": "user_001", "clubId": "club_4", "role": "Member", "joinedAt": "2024-01-10" },
+  { "id": "uc_004", "userId": "admin_001", "clubId": "club_1", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_005", "userId": "admin_001", "clubId": "club_2", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_006", "userId": "admin_001", "clubId": "club_3", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_007", "userId": "admin_001", "clubId": "club_4", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_008", "userId": "admin_001", "clubId": "club_5", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_009", "userId": "admin_001", "clubId": "club_6", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_010", "userId": "admin_001", "clubId": "club_7", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_011", "userId": "admin_001", "clubId": "club_8", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_012", "userId": "admin_001", "clubId": "club_9", "role": "President", "joinedAt": "2020-01-01" },
+  { "id": "uc_013", "userId": "admin_001", "clubId": "club_10", "role": "President", "joinedAt": "2020-01-01" }
 ]

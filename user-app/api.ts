@@ -222,21 +222,14 @@ class UserApi {
     });
   }
 
-  async joinClub(clubId: string): Promise<void> {
+  async requestJoinClub(clubId: string): Promise<void> {
     if (!this.currentUser) return;
-    await fetch(`${BASE_URL}/user-clubs`, {
+    const res = await fetch(`${BASE_URL}/user-clubs/request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: this.currentUser.id, clubId, role: 'Member' }),
+      body: JSON.stringify({ userId: this.currentUser.id, clubId }),
     });
-    const club = await this.getClubById(clubId);
-    if (club) {
-      await fetch(`${BASE_URL}/clubs/${clubId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ members: club.members + 1 }),
-      });
-    }
+    if (!res.ok) throw new Error('Failed to request join');
   }
 
   async leaveClub(clubId: string): Promise<void> {
@@ -244,14 +237,13 @@ class UserApi {
     await fetch(`${BASE_URL}/user-clubs/${this.currentUser.id}/${clubId}`, {
       method: 'DELETE',
     });
-    const club = await this.getClubById(clubId);
-    if (club) {
-      await fetch(`${BASE_URL}/clubs/${clubId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ members: Math.max(0, club.members - 1) }),
-      });
-    }
+  }
+
+  async getClubMembership(clubId: string): Promise<{ role: string } | null> {
+    if (!this.currentUser) return null;
+    const res = await fetch(`${BASE_URL}/user-clubs/${this.currentUser.id}/${clubId}`);
+    if (!res.ok) return null;
+    return res.json();
   }
 
   async purchaseTicket(eventId: string, seat: string, price: number) {

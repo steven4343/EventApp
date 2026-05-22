@@ -474,11 +474,15 @@ function ClubsManagementScreen() {
   const [clubs, setClubs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [pendingMap, setPendingMap] = useState<Record<string, any[]>>({});
+  const [expandedClub, setExpandedClub] = useState<string | null>(null);
 
   const loadClubs = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await adminApi.getClubs();
+      const admin = adminApi.getCurrentAdmin();
+      if (!admin) return;
+      const data = await adminApi.getPresidentClubs(admin.id);
       setClubs(data);
     } catch (e) {
       console.error('Failed to load clubs:', e);
@@ -490,6 +494,39 @@ function ClubsManagementScreen() {
   useEffect(() => {
     loadClubs();
   }, [loadClubs]);
+
+  const loadPending = async (clubId: string) => {
+    if (expandedClub === clubId) {
+      setExpandedClub(null);
+      return;
+    }
+    setExpandedClub(clubId);
+    try {
+      const members = await adminApi.getPendingMembers(clubId);
+      setPendingMap(prev => ({ ...prev, [clubId]: members }));
+    } catch (e) {
+      console.error('Failed to load pending:', e);
+    }
+  };
+
+  const handleApproveMember = async (clubId: string, userId: string) => {
+    try {
+      await adminApi.approveMember(clubId, userId);
+      loadPending(clubId);
+      loadClubs();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to approve member');
+    }
+  };
+
+  const handleRejectMember = async (clubId: string, userId: string) => {
+    try {
+      await adminApi.rejectMember(clubId, userId);
+      loadPending(clubId);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to reject member');
+    }
+  };
 
   const handleApprove = async (id: string) => {
     try {
@@ -545,8 +582,8 @@ function ClubsManagementScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.headerTitle}>Clubs</Text>
-            <Text style={styles.headerSubtitle}>Manage clubs</Text>
+            <Text style={styles.headerTitle}>My Clubs</Text>
+            <Text style={styles.headerSubtitle}>Clubs you manage</Text>
           </View>
           <TouchableOpacity style={styles.addButton} onPress={() => setShowCreate(true)}>
             <Text style={styles.addButtonText}>+ New</Text>
@@ -555,32 +592,64 @@ function ClubsManagementScreen() {
       </View>
       <ScrollView style={styles.listContainer}>
         {clubs.length === 0 ? (
-          <Text style={styles.emptyText}>No clubs found</Text>
+          <Text style={styles.emptyText}>No clubs found. Create one!</Text>
         ) : (
           clubs.map(club => (
-            <View key={club.id} style={styles.listItem}>
-              <View style={styles.itemRow}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemTitle}>{club.name}</Text>
-                  <Text style={styles.itemDate}>{club.category} | {club.members} members</Text>
+            <View key={club.id}>
+              <TouchableOpacity style={styles.listItem} onPress={() => loadPending(club.id)} activeOpacity={0.7}>
+                <View style={styles.itemRow}>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemTitle}>{club.name}</Text>
+                    <Text style={styles.itemDate}>{club.category} | {club.members} members</Text>
+                  </View>
+                  <Text style={[styles.itemStatus, getStatusStyle(club.status)]}>{club.status}</Text>
                 </View>
-                <Text style={[styles.itemStatus, getStatusStyle(club.status)]}>{club.status}</Text>
-              </View>
-              <View style={styles.itemActions}>
-                {club.status === 'Pending' && (
-                  <TouchableOpacity style={styles.actionPublish} onPress={() => handleApprove(club.id)}>
-                    <Text style={styles.actionText}>Approve</Text>
+                <View style={styles.itemActions}>
+                  {club.status === 'Pending' && (
+                    <TouchableOpacity style={styles.actionPublish} onPress={() => handleApprove(club.id)}>
+                      <Text style={styles.actionText}>Approve</Text>
+                    </TouchableOpacity>
+                  )}
+                  {club.status === 'Active' && (
+                    <TouchableOpacity style={styles.actionDraft} onPress={() => handleDeactivate(club.id)}>
+                      <Text style={styles.actionTextDraft}>Deactivate</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.actionDelete} onPress={() => handleDelete(club.id)}>
+                    <Text style={styles.actionTextDelete}>Delete</Text>
                   </TouchableOpacity>
-                )}
-                {club.status === 'Active' && (
-                  <TouchableOpacity style={styles.actionDraft} onPress={() => handleDeactivate(club.id)}>
-                    <Text style={styles.actionTextDraft}>Deactivate</Text>
+                  <TouchableOpacity style={[styles.actionPublish, { backgroundColor: '#e0e7ff' }]} onPress={() => loadPending(club.id)}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#4338ca' }}>
+                      {expandedClub === club.id ? 'Hide' : 'Pending'}
+                    </Text>
                   </TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.actionDelete} onPress={() => handleDelete(club.id)}>
-                  <Text style={styles.actionTextDelete}>Delete</Text>
-                </TouchableOpacity>
-              </View>
+                </View>
+              </TouchableOpacity>
+              {expandedClub === club.id && (
+                <View style={styles.pendingSection}>
+                  <Text style={styles.pendingTitle}>Pending Join Requests</Text>
+                  {(!pendingMap[club.id] || pendingMap[club.id].length === 0) ? (
+                    <Text style={styles.noPending}>No pending requests</Text>
+                  ) : (
+                    pendingMap[club.id].map((member: any) => (
+                      <View key={member.id} style={styles.pendingItem}>
+                        <View style={styles.pendingInfo}>
+                          <Text style={styles.pendingName}>{member.name}</Text>
+                          <Text style={styles.pendingEmail}>{member.email}</Text>
+                        </View>
+                        <View style={styles.pendingActions}>
+                          <TouchableOpacity style={styles.approveBtn} onPress={() => handleApproveMember(club.id, member.user_id)}>
+                            <Text style={styles.approveBtnText}>✓</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.rejectBtn} onPress={() => handleRejectMember(club.id, member.user_id)}>
+                            <Text style={styles.rejectBtnText}>✗</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+              )}
             </View>
           ))
         )}
@@ -1344,6 +1413,79 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 160,
     resizeMode: 'cover',
+  },
+  pendingSection: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    marginTop: -8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  pendingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 8,
+  },
+  noPending: {
+    fontSize: 13,
+    color: '#94a3b8',
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  pendingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  pendingInfo: {
+    flex: 1,
+  },
+  pendingName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  pendingEmail: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  pendingActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  approveBtn: {
+    backgroundColor: '#dcfce7',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  approveBtnText: {
+    fontSize: 18,
+    color: '#166534',
+    fontWeight: '700',
+  },
+  rejectBtn: {
+    backgroundColor: '#fee2e2',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectBtnText: {
+    fontSize: 18,
+    color: '#dc2626',
+    fontWeight: '700',
   },
   profileCard: {
     backgroundColor: '#fff',
