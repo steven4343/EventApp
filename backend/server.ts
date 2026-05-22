@@ -15,7 +15,8 @@ async function initDB() {
   await database.initialize();
   const existingEvents = await database.getEvents();
   if (existingEvents.length === 0) {
-    console.log('Seeding database...');
+    console.log('Resetting and seeding database...');
+    await database.reset();
     const users: User[] = require('./data/users.json');
     for (const u of users) await database.createUser(u);
     const clubs: Club[] = require('./data/clubs.json');
