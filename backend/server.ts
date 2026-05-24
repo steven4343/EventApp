@@ -20,36 +20,38 @@ async function seedDB() {
     const existingClubs = await database.getClubs();
     if (existingClubs.length > 0) {
       const uc = await database.getAllUserClubs();
-      if (uc.length >= 10) { console.log('DB already seeded'); return; }
+      if (uc.length >= 10) { console.log('DB already seeded (skipping re-seed)'); }
       console.log('Re-seeding user_clubs...');
       for (const u of uc) await database.removeUserClub(u.userId, u.clubId);
     }
-    console.log('Seeding database...');
-    const users: any[] = require('./data/users.json');
-    for (const u of users) {
-      try { await database.createUser(u); } catch (e: any) { console.log('User exists:', u.id); }
+    if (existingClubs.length === 0 || (await database.getAllUserClubs()).length === 0) {
+      console.log('Seeding database...');
+      const users: any[] = require('./data/users.json');
+      for (const u of users) {
+        try { await database.createUser(u); } catch (e: any) { console.log('User exists:', u.id); }
+      }
+      const clubs: any[] = require('./data/clubs.json');
+      for (const c of clubs) {
+        try { await database.addClub(c); } catch (e: any) { console.log('Club exists:', c.id); }
+      }
+      const events: any[] = require('./data/events.json');
+      for (const e of events) {
+        try { await database.addEvent(e); } catch (ex: any) { console.log('Event exists:', e.id); }
+      }
+      const tickets: any[] = require('./data/tickets.json');
+      for (const t of tickets) {
+        try { await database.addTicket(t); } catch (e: any) { console.log('Ticket exists:', t.id); }
+      }
+      const savedEvents: any[] = require('./data/saved_events.json');
+      for (const s of savedEvents) {
+        try { await database.addSaved(s); } catch (e: any) { console.log('Saved exists:', s.id); }
+      }
+      const uclubs: any[] = require('./data/user_clubs.json');
+      for (const uc of uclubs) {
+        try { await database.addUserClub(uc); } catch (e: any) { console.log('UC exists:', uc.id); }
+      }
+      console.log('Seed complete');
     }
-    const clubs: any[] = require('./data/clubs.json');
-    for (const c of clubs) {
-      try { await database.addClub(c); } catch (e: any) { console.log('Club exists:', c.id); }
-    }
-    const events: any[] = require('./data/events.json');
-    for (const e of events) {
-      try { await database.addEvent(e); } catch (ex: any) { console.log('Event exists:', e.id); }
-    }
-    const tickets: any[] = require('./data/tickets.json');
-    for (const t of tickets) {
-      try { await database.addTicket(t); } catch (e: any) { console.log('Ticket exists:', t.id); }
-    }
-    const savedEvents: any[] = require('./data/saved_events.json');
-    for (const s of savedEvents) {
-      try { await database.addSaved(s); } catch (e: any) { console.log('Saved exists:', s.id); }
-    }
-    const uclubs: any[] = require('./data/user_clubs.json');
-    for (const uc of uclubs) {
-      try { await database.addUserClub(uc); } catch (e: any) { console.log('UC exists:', uc.id); }
-    }
-    console.log('Seed complete');
   } catch (e) {
     console.error('Seed failed:', e);
   }
