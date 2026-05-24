@@ -28,6 +28,7 @@ async function seedImagesFromFiles() {
     'ed7bfb12660b2fe3e71ec2eb1a6f020bb7f683fa.png': ['event_8'],
     'dfe3dd58b825e2385a751187d0e16cf5736a02da.png': ['event_3'],
     'dev3pack_logo.jpg': ['event_dev3pack_hackathon'],
+    'colour-run.jpg': ['event_colour_run'],
   };
 
   // Manual mapping: filename -> club_id

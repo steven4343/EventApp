@@ -89,6 +89,7 @@ async function seedImages() {
       'ed7bfb12660b2fe3e71ec2eb1a6f020bb7f683fa.png': ['event_8'],      // Medical Faculty Guest Lecture
       'dfe3dd58b825e2385a751187d0e16cf5736a02da.png': ['event_3'],      // International Students Welcome (was unused in mvp)
       'dev3pack_logo.jpg': ['event_dev3pack_hackathon'],
+      'colour-run.jpg': ['event_colour_run'],
     };
 
     // Manual mapping: filename -> club_id
@@ -99,7 +100,7 @@ async function seedImages() {
       'photography.jpg': 'club_8',
     };
 
-    const skipFiles = ['icon.png', 'favicon.png', 'splash-icon.png', 'adaptive-icon.png', 'colour-run.jpg', 'dev3pack.png'];
+    const skipFiles = ['icon.png', 'favicon.png', 'splash-icon.png', 'adaptive-icon.png', 'dev3pack.png'];
 
     const files = fs.readdirSync(imagesDir);
     for (const file of files) {
