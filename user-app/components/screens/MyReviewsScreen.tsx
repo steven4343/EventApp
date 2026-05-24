@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   },
   reviewCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

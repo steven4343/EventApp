@@ -52,7 +52,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 12,
     marginHorizontal: 6,

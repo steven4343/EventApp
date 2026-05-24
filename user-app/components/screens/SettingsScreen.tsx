@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   sectionTitle: {

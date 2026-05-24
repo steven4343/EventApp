@@ -1069,7 +1069,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 8,
     shadowColor: '#000',
@@ -1181,7 +1181,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     shadowColor: '#000',
@@ -1206,7 +1206,7 @@ const styles = StyleSheet.create({
   },
   listItem: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
@@ -1357,7 +1357,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
   },
@@ -1369,7 +1369,7 @@ const styles = StyleSheet.create({
   submitButton: {
     flex: 1,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: 'center',
     backgroundColor: '#2563eb',
   },
@@ -1395,7 +1395,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
@@ -1406,7 +1406,7 @@ const styles = StyleSheet.create({
   },
   imagePreviewContainer: {
     marginBottom: 12,
-    borderRadius: 12,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   imagePreview: {
@@ -1416,7 +1416,7 @@ const styles = StyleSheet.create({
   },
   pendingSection: {
     backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
     marginTop: -8,
@@ -1440,7 +1440,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 20,
     padding: 12,
     marginBottom: 8,
   },
@@ -1489,7 +1489,7 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 12,
     alignItems: 'center',

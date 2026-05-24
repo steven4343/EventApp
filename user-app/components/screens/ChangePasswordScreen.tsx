@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   form: {
     backgroundColor: '#fff',
     margin: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
   },
   label: {
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#2563eb',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     alignItems: 'center',
     marginTop: 24,

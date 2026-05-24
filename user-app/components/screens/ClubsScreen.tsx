@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   meetingInfo: {
     backgroundColor: '#f8fafc',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 20,
     marginBottom: 8,
   },
   meetingLabel: {

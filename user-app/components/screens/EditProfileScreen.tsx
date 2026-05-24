@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   form: {
     backgroundColor: '#fff',
     margin: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
   },
   label: {
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     marginTop: 8,
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#2563eb',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     alignItems: 'center',
     marginTop: 24,

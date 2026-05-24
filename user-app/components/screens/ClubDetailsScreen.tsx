@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: '#e2e8f0',
-    borderRadius: 12,
+    borderRadius: 20,
   },
   statNumber: {
     fontSize: 18,
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   },
   meetingCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     gap: 12,
   },
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
   },
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   joinButton: {
     backgroundColor: '#2563eb',
-    borderRadius: 12,
+    borderRadius: 20,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,

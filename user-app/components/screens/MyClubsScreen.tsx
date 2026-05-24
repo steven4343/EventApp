@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   },
   clubCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',

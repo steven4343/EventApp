@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     backgroundColor: '#f8fafc',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 20,
   },

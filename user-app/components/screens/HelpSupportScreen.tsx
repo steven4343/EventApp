@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   sectionTitle: {
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   reportButton: {
     backgroundColor: '#2563eb',
     margin: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     alignItems: 'center',
   },
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: 'center',
   },
   cancelButton: {
