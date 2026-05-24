@@ -287,6 +287,53 @@ class UserApi {
     return true;
   }
 
+  async verifyClubAdmin(clubId: string, password: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/verify-admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    return res.ok;
+  }
+
+  async getClubMembers(clubId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members`);
+    return res.json();
+  }
+
+  async addClubMember(clubId: string, userId: string, role: string, presidentId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members?presidentId=${presidentId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, role }),
+    });
+    if (!res.ok) throw new Error('Failed to add member');
+    return res.json();
+  }
+
+  async removeClubMember(clubId: string, userId: string, presidentId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}?presidentId=${presidentId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to remove member');
+  }
+
+  async searchUser(email: string) {
+    const res = await fetch(`${BASE_URL}/users/search?email=${encodeURIComponent(email)}`);
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  async updateClub(clubId: string, updates: any, presidentId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}?presidentId=${presidentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error('Failed to update club');
+    return res.json();
+  }
+
   async purchaseTicket(eventId: string, seat: string, price: number) {
     if (!this.currentUser) throw new Error('Not logged in');
     const res = await fetch(`${BASE_URL}/tickets`, {

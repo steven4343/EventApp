@@ -9,6 +9,8 @@ class Database {
     await pool.query(sql);
     const sql2 = fs.readFileSync(path.join(__dirname, 'migrations', '002_images.sql'), 'utf-8');
     await pool.query(sql2);
+    const sql3 = fs.readFileSync(path.join(__dirname, 'migrations', '003_club_admin_password.sql'), 'utf-8');
+    await pool.query(sql3);
     console.log('Database initialized');
   }
 
@@ -211,6 +213,17 @@ class Database {
     return rows;
   }
 
+  async getClubMembers(clubId: string): Promise<any[]> {
+    const { rows } = await pool.query(`
+      SELECT uc.*, u.name, u.email
+      FROM user_clubs uc
+      JOIN users u ON u.id = uc.user_id
+      WHERE uc.club_id = $1 AND uc.role != 'Pending'
+      ORDER BY uc.role, u.name
+    `, [clubId]);
+    return rows;
+  }
+
   async approveClubMember(userId: string, clubId: string): Promise<void> {
     await this.updateUserClubRole(userId, clubId, 'Member');
     const club = await this.getClubById(clubId);
@@ -277,6 +290,12 @@ class Database {
 
   async deleteImagesByEntity(entityType: string, entityId: string): Promise<void> {
     await pool.query('DELETE FROM images WHERE entity_type = $1 AND entity_id = $2', [entityType, entityId]);
+  }
+
+  async verifyClubAdmin(clubId: string, password: string): Promise<boolean> {
+    const { rows } = await pool.query('SELECT admin_password FROM clubs WHERE id = $1', [clubId]);
+    if (rows.length === 0) return false;
+    return rows[0].admin_password === password;
   }
 
   async reset(): Promise<void> {
@@ -397,6 +416,7 @@ function mapClubUpdate(c: Partial<Club>): Record<string, any> {
   if (c.rating !== undefined) fields.rating = c.rating;
   if (c.reviews !== undefined) fields.reviews = c.reviews;
   if (c.established !== undefined) fields.established = c.established;
+  if (c.adminPassword !== undefined) fields.admin_password = c.adminPassword;
   return fields;
 }
 

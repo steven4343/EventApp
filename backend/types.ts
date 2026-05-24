@@ -47,6 +47,7 @@ export interface Club {
   rating: number;
   reviews: number;
   established: string;
+  adminPassword?: string;
 }
 
 export interface Ticket {

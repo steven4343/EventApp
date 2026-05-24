@@ -342,12 +342,30 @@ app.get('/api/clubs/:id', async (req, res) => {
 
 app.put('/api/clubs/:id', async (req, res) => {
   const { id } = req.params;
+  const { presidentId } = req.query;
+
+  if (presidentId && !await requirePresident(presidentId as string, id)) {
+    return res.status(403).json({ error: 'Only club presidents can update the club' });
+  }
+
   await database.updateClub(id, req.body);
   const club = await database.getClubById(id);
   if (club) {
     res.json(club);
   } else {
     res.status(404).json({ error: 'Club not found' });
+  }
+});
+
+app.post('/api/clubs/:clubId/verify-admin', async (req, res) => {
+  const { clubId } = req.params;
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password required' });
+  const valid = await database.verifyClubAdmin(clubId, password);
+  if (valid) {
+    res.json({ verified: true });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
   }
 });
 
@@ -511,6 +529,82 @@ app.get('/api/users/:userId/president-clubs', async (req, res) => {
   const { userId } = req.params;
   const clubs = await database.getPresidentClubs(userId);
   res.json(clubs);
+});
+
+// ==================== CLUB PRESIDENT MANAGEMENT ====================
+
+async function requirePresident(userId: string, clubId: string): Promise<boolean> {
+  const membership = await database.getUserClub(userId, clubId);
+  return !!membership && membership.role === 'President';
+}
+
+app.get('/api/clubs/:clubId/members', async (req, res) => {
+  const { clubId } = req.params;
+  const members = await database.getClubMembers(clubId);
+  res.json(members);
+});
+
+app.post('/api/clubs/:clubId/members', async (req, res) => {
+  const { clubId } = req.params;
+  const { userId: targetUserId, role } = req.body;
+  const { presidentId } = req.query;
+
+  if (!presidentId || !await requirePresident(presidentId as string, clubId)) {
+    return res.status(403).json({ error: 'Only club presidents can add members' });
+  }
+  if (!targetUserId || !role) {
+    return res.status(400).json({ error: 'userId and role required' });
+  }
+
+  const existing = await database.getUserClub(targetUserId, clubId);
+  if (existing) {
+    return res.status(400).json({ error: 'User is already a member' });
+  }
+
+  const userClub: UserClub = {
+    id: `uc_${uuidv4()}`,
+    userId: targetUserId,
+    clubId,
+    role,
+    joinedAt: new Date().toISOString(),
+  };
+  await database.addUserClub(userClub);
+
+  const club = await database.getClubById(clubId);
+  if (club) await database.updateClub(clubId, { members: club.members + 1 });
+
+  res.status(201).json(userClub);
+});
+
+app.delete('/api/clubs/:clubId/members/:userId', async (req, res) => {
+  const { clubId, userId } = req.params;
+  const { presidentId } = req.query;
+
+  if (!presidentId || !await requirePresident(presidentId as string, clubId)) {
+    return res.status(403).json({ error: 'Only club presidents can remove members' });
+  }
+
+  const membership = await database.getUserClub(userId, clubId);
+  if (!membership) {
+    return res.status(404).json({ error: 'User is not a member' });
+  }
+  if (membership.role === 'President') {
+    return res.status(400).json({ error: 'Cannot remove a club president' });
+  }
+
+  await database.removeUserClub(userId, clubId);
+  const club = await database.getClubById(clubId);
+  if (club) await database.updateClub(clubId, { members: Math.max(0, club.members - 1) });
+
+  res.json({ message: 'Member removed' });
+});
+
+app.get('/api/users/search', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'email query required' });
+  const user = await database.getUserByEmail(email as string);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ id: user.id, name: user.name, email: user.email });
 });
 
 // ==================== REVIEWS ROUTES ====================

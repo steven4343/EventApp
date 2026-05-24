@@ -114,7 +114,19 @@ export function ClubDetailsScreen() {
         </TouchableOpacity>
       );
     }
-    if (membership.role === 'Member' || membership.role === 'President') {
+    if (membership.role === 'President') {
+      return (
+        <View>
+          <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#059669' }]} onPress={() => navigation.navigate('ClubAdmin' as never, { clubId, clubName: club.name } as never)}>
+            <Text style={styles.joinButtonText}>Manage Club</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#ef4444', marginTop: 8 }]} onPress={handleLeave}>
+            <Text style={styles.joinButtonText}>Leave Club</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    if (membership.role === 'Member') {
       return (
         <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#ef4444' }]} onPress={handleLeave}>
           <Text style={styles.joinButtonText}>Leave Club</Text>

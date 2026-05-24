@@ -474,8 +474,6 @@ function ClubsManagementScreen() {
   const [clubs, setClubs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [pendingMap, setPendingMap] = useState<Record<string, any[]>>({});
-  const [expandedClub, setExpandedClub] = useState<string | null>(null);
 
   const loadClubs = useCallback(async () => {
     try {
@@ -494,39 +492,6 @@ function ClubsManagementScreen() {
   useEffect(() => {
     loadClubs();
   }, [loadClubs]);
-
-  const loadPending = async (clubId: string) => {
-    if (expandedClub === clubId) {
-      setExpandedClub(null);
-      return;
-    }
-    setExpandedClub(clubId);
-    try {
-      const members = await adminApi.getPendingMembers(clubId);
-      setPendingMap(prev => ({ ...prev, [clubId]: members }));
-    } catch (e) {
-      console.error('Failed to load pending:', e);
-    }
-  };
-
-  const handleApproveMember = async (clubId: string, userId: string) => {
-    try {
-      await adminApi.approveMember(clubId, userId);
-      loadPending(clubId);
-      loadClubs();
-    } catch (e) {
-      Alert.alert('Error', 'Failed to approve member');
-    }
-  };
-
-  const handleRejectMember = async (clubId: string, userId: string) => {
-    try {
-      await adminApi.rejectMember(clubId, userId);
-      loadPending(clubId);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to reject member');
-    }
-  };
 
   const handleApprove = async (id: string) => {
     try {
@@ -595,61 +560,29 @@ function ClubsManagementScreen() {
           <Text style={styles.emptyText}>No clubs found. Create one!</Text>
         ) : (
           clubs.map(club => (
-            <View key={club.id}>
-              <TouchableOpacity style={styles.listItem} onPress={() => loadPending(club.id)} activeOpacity={0.7}>
-                <View style={styles.itemRow}>
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemTitle}>{club.name}</Text>
-                    <Text style={styles.itemDate}>{club.category} | {club.members} members</Text>
-                  </View>
-                  <Text style={[styles.itemStatus, getStatusStyle(club.status)]}>{club.status}</Text>
+            <View key={club.id} style={styles.listItem}>
+              <View style={styles.itemRow}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemTitle}>{club.name}</Text>
+                  <Text style={styles.itemDate}>{club.category} | {club.members} members</Text>
                 </View>
-                <View style={styles.itemActions}>
-                  {club.status === 'Pending' && (
-                    <TouchableOpacity style={styles.actionPublish} onPress={() => handleApprove(club.id)}>
-                      <Text style={styles.actionText}>Approve</Text>
-                    </TouchableOpacity>
-                  )}
-                  {club.status === 'Active' && (
-                    <TouchableOpacity style={styles.actionDraft} onPress={() => handleDeactivate(club.id)}>
-                      <Text style={styles.actionTextDraft}>Deactivate</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity style={styles.actionDelete} onPress={() => handleDelete(club.id)}>
-                    <Text style={styles.actionTextDelete}>Delete</Text>
+                <Text style={[styles.itemStatus, getStatusStyle(club.status)]}>{club.status}</Text>
+              </View>
+              <View style={styles.itemActions}>
+                {club.status === 'Pending' && (
+                  <TouchableOpacity style={styles.actionPublish} onPress={() => handleApprove(club.id)}>
+                    <Text style={styles.actionText}>Approve</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionPublish, { backgroundColor: '#e0e7ff' }]} onPress={() => loadPending(club.id)}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#4338ca' }}>
-                      {expandedClub === club.id ? 'Hide' : 'Pending'}
-                    </Text>
+                )}
+                {club.status === 'Active' && (
+                  <TouchableOpacity style={styles.actionDraft} onPress={() => handleDeactivate(club.id)}>
+                    <Text style={styles.actionTextDraft}>Deactivate</Text>
                   </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-              {expandedClub === club.id && (
-                <View style={styles.pendingSection}>
-                  <Text style={styles.pendingTitle}>Pending Join Requests</Text>
-                  {(!pendingMap[club.id] || pendingMap[club.id].length === 0) ? (
-                    <Text style={styles.noPending}>No pending requests</Text>
-                  ) : (
-                    pendingMap[club.id].map((member: any) => (
-                      <View key={member.id} style={styles.pendingItem}>
-                        <View style={styles.pendingInfo}>
-                          <Text style={styles.pendingName}>{member.name}</Text>
-                          <Text style={styles.pendingEmail}>{member.email}</Text>
-                        </View>
-                        <View style={styles.pendingActions}>
-                          <TouchableOpacity style={styles.approveBtn} onPress={() => handleApproveMember(club.id, member.user_id)}>
-                            <Text style={styles.approveBtnText}>✓</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.rejectBtn} onPress={() => handleRejectMember(club.id, member.user_id)}>
-                            <Text style={styles.rejectBtnText}>✗</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))
-                  )}
-                </View>
-              )}
+                )}
+                <TouchableOpacity style={styles.actionDelete} onPress={() => handleDelete(club.id)}>
+                  <Text style={styles.actionTextDelete}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}

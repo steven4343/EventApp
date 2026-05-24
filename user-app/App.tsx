@@ -12,6 +12,7 @@ import { EventDetailsScreen } from './components/screens/EventDetailsScreen';
 import { ProfileScreen } from './components/screens/ProfileScreen';
 import { ClubsScreen } from './components/screens/ClubsScreen';
 import { ClubDetailsScreen } from './components/screens/ClubDetailsScreen';
+import { ClubAdminScreen } from './components/screens/ClubAdminScreen';
 import { RecommendationsScreen } from './components/screens/RecommendationsScreen';
 import { SettingsScreen } from './components/screens/SettingsScreen';
 import { EditProfileScreen } from './components/screens/EditProfileScreen';
@@ -65,6 +66,7 @@ function ClubsStack({ requireAuth }: { requireAuth: () => void }) {
     >
       <Stack.Screen name="ClubsList" component={ClubsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ClubDetails" component={ClubDetailsScreen} />
+      <Stack.Screen name="ClubAdmin" component={ClubAdminScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
