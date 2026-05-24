@@ -116,14 +116,9 @@ export function ClubDetailsScreen() {
     }
     if (membership.role === 'President') {
       return (
-        <View>
-          <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#059669' }]} onPress={() => navigation.navigate('ClubAdmin' as never, { clubId, clubName: club.name } as never)}>
-            <Text style={styles.joinButtonText}>Manage Club</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#ef4444', marginTop: 8 }]} onPress={handleLeave}>
-            <Text style={styles.joinButtonText}>Leave Club</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#ef4444' }]} onPress={handleLeave}>
+          <Text style={styles.joinButtonText}>Leave Club</Text>
+        </TouchableOpacity>
       );
     }
     if (membership.role === 'Member') {
@@ -143,6 +138,11 @@ export function ClubDetailsScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
+          {membership?.role === 'President' && (
+            <TouchableOpacity style={styles.manageButton} onPress={() => navigation.navigate('ClubAdmin' as never, { clubId, clubName: club.name } as never)}>
+              <Text style={styles.manageButtonText}>Manage</Text>
+            </TouchableOpacity>
+          )}
           <Image source={normalizeImage(club.image)} style={styles.clubImage} resizeMode="contain" />
           <View style={styles.headerOverlay}>
             <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
@@ -235,6 +235,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1e293b',
+  },
+  manageButton: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: '#059669',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  manageButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   clubImage: {
     width: '100%',
