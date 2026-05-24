@@ -32,11 +32,11 @@ async function seedDB() {
       }
       const clubs: any[] = require('./data/clubs.json');
       for (const c of clubs) {
-        try { await database.addClub(c); } catch (e: any) { console.log('Club exists:', c.id); }
+        try { await database.addClub(c); } catch (e: any) { await database.updateClub(c.id, { image: c.image }); console.log('Updated club image:', c.id); }
       }
       const events: any[] = require('./data/events.json');
       for (const e of events) {
-        try { await database.addEvent(e); } catch (ex: any) { console.log('Event exists:', e.id); }
+        try { await database.addEvent(e); } catch (ex: any) { await database.updateEvent(e.id, { image: e.image }); console.log('Updated event image:', e.id); }
       }
       const tickets: any[] = require('./data/tickets.json');
       for (const t of tickets) {
