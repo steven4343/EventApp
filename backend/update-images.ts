@@ -15,137 +15,81 @@ function fileToDataUri(filePath: string): string | null {
   return `data:${mime};base64,${base64}`;
 }
 
-function normalize(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-async function seedImagesFromBase64() {
-  // Copy existing base64 images from events and clubs tables into the images table
-  for (const entityType of ['event', 'club']) {
-    const rows = await pool.query(
-      `SELECT id, image FROM ${entityType}s WHERE image IS NOT NULL AND image != ''`
-    );
-    for (const row of rows.rows) {
-      const exists = await pool.query(
-        'SELECT id FROM images WHERE entity_type = $1 AND entity_id = $2',
-        [entityType, row.id]
-      );
-      if (exists.rows.length === 0) {
-        await pool.query(
-          `INSERT INTO images (id, entity_type, entity_id, image_data, created_at)
-           VALUES ($1, $2, $3, $4, NOW())`,
-          [`img_${uuidv4()}`, entityType, row.id, row.image]
-        );
-        console.log(`Seeded ${entityType} ${row.id} from base64`);
-      }
-    }
-  }
-}
-
 async function seedImagesFromFiles() {
   const imagesDir = path.join(__dirname, 'public', 'images');
   if (!fs.existsSync(imagesDir)) return;
 
-  const clubNameMap: Record<string, string> = {};
-  const clubRows = await pool.query('SELECT id, name FROM clubs');
-  for (const row of clubRows.rows) {
-    const key = normalize(row.name);
-    // Also index by individual words
-    clubNameMap[key] = row.id;
-    for (const word of row.name.split(/[\s,()&]+/)) {
-      const w = normalize(word);
-      if (w.length > 2) clubNameMap[w] = row.id;
-    }
-  }
+  // Manual mapping: hash filename -> event_id (from mvp project's mock data)
+  const eventImageMap: Record<string, string[]> = {
+    '7903ba759388609c8cc053af8ae8dc4c60a50dd0.png': ['event_1'],
+    'd7ae4b74561b5c62377c6e8e1ada58ad3e80fef4.png': ['event_2', 'event_3', 'event_5', 'event_7'],
+    '9740598005f689306f597b4d692dc46014798202.png': ['event_4'],
+    '6356727368ab75ac3f4eea867fb27bcc7ccd9258.png': ['event_6'],
+    'ed7bfb12660b2fe3e71ec2eb1a6f020bb7f683fa.png': ['event_8'],
+    'dfe3dd58b825e2385a751187d0e16cf5736a02da.png': ['event_3'],
+    'dev3pack_logo.jpg': ['event_dev3pack_hackathon'],
+  };
 
-  const eventNameMap: Record<string, string> = {};
-  const eventRows = await pool.query('SELECT id, title FROM events');
-  for (const row of eventRows.rows) {
-    const key = normalize(row.title);
-    eventNameMap[key] = row.id;
-    for (const word of row.title.split(/[\s,()&]+/)) {
-      const w = normalize(word);
-      if (w.length > 2) eventNameMap[w] = row.id;
-    }
-  }
+  // Manual mapping: filename -> club_id
+  const clubImageMap: Record<string, string> = {
+    'chess.jpg': 'club_9',
+    'CUZITA Club.jpeg': 'club_10',
+    'debate club.png': 'club_4',
+    'photography.jpg': 'club_8',
+  };
 
-  // Manual overrides for tricky filenames -> entity IDs
-  const manualClub: Record<string, string> = {};
-  const manualEvent: Record<string, string> = {};
+  const skipFiles = ['icon.png', 'favicon.png', 'splash-icon.png', 'adaptive-icon.png', 'colour-run.jpg', 'dev3pack.png'];
 
   const files = fs.readdirSync(imagesDir);
   for (const file of files) {
+    if (skipFiles.includes(file)) continue;
     const filePath = path.join(imagesDir, file);
     if (!fs.statSync(filePath).isFile()) continue;
 
     const dataUri = fileToDataUri(filePath);
     if (!dataUri) continue;
 
-    const baseName = path.basename(file, path.extname(file));
-    const normalized = normalize(baseName);
-
-    // Skip app icons
-    if (['icon', 'favicon', 'splash-icon', 'adaptive-icon'].includes(normalized)) continue;
-
-    // Try to match to a club
-    let entityType = 'club';
-    let entityId = manualClub[normalized] || clubNameMap[normalized];
-
-    // Try to match to an event if no club match
-    if (!entityId) {
-      entityType = 'event';
-      entityId = manualEvent[normalized] || eventNameMap[normalized];
-    }
-
-    // If still no match, try contains matching
-    if (!entityId) {
-      for (const [key, id] of Object.entries(clubNameMap)) {
-        if (normalized.includes(key) || key.includes(normalized)) {
-          entityType = 'club';
-          entityId = id;
-          break;
+    const eventIds = eventImageMap[file];
+    if (eventIds) {
+      for (const eventId of eventIds) {
+        const existing = await pool.query(
+          'SELECT id FROM images WHERE entity_type = $1 AND entity_id = $2',
+          ['event', eventId]
+        );
+        if (existing.rows.length === 0) {
+          await pool.query(
+            `INSERT INTO images (id, entity_type, entity_id, image_data, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [`img_${uuidv4()}`, 'event', eventId, dataUri]
+          );
+          console.log(`Seeded event image for ${eventId} from ${file}`);
         }
       }
+      continue;
     }
 
-    if (!entityId) {
-      for (const [key, id] of Object.entries(eventNameMap)) {
-        if (normalized.includes(key) || key.includes(normalized)) {
-          entityType = 'event';
-          entityId = id;
-          break;
-        }
-      }
-    }
-
-    if (entityId) {
-      const exists = await pool.query(
+    const clubId = clubImageMap[file];
+    if (clubId) {
+      const existing = await pool.query(
         'SELECT id FROM images WHERE entity_type = $1 AND entity_id = $2',
-        [entityType, entityId]
+        ['club', clubId]
       );
-      if (exists.rows.length === 0) {
+      if (existing.rows.length === 0) {
         await pool.query(
           `INSERT INTO images (id, entity_type, entity_id, image_data, created_at)
            VALUES ($1, $2, $3, $4, NOW())`,
-          [`img_${uuidv4()}`, entityType, entityId, dataUri]
+          [`img_${uuidv4()}`, 'club', clubId, dataUri]
         );
-        console.log(`Seeded ${entityType} ${entityId} from file: ${file}`);
-      } else {
-        console.log(`Skipped ${file} -> ${entityType} ${entityId} (already has image)`);
+        console.log(`Seeded club image for ${clubId} from ${file}`);
       }
     } else {
-      console.log(`No match for file: ${file}`);
+      console.log(`No mapping for image file: ${file}`);
     }
   }
 }
 
 async function updateImages() {
-  console.log('Seeding images from existing base64 data...');
-  await seedImagesFromBase64();
-
-  console.log('Seeding images from physical files...');
   await seedImagesFromFiles();
-
   console.log('Image seeding complete');
   process.exit(0);
 }

@@ -66,92 +66,83 @@ async function seedImages() {
     const imagesDir = path.join(__dirname, 'public', 'images');
     if (!fs.existsSync(imagesDir)) return;
 
-    function normalize(s: string) { return s.toLowerCase().replace(/[^a-z0-9]/g, ''); }
-
-    // Build club name map
-    const clubMap: Record<string, string> = {};
-    const clubs = await database.getClubs();
-    for (const c of clubs) {
-      clubMap[normalize(c.name)] = c.id;
-      for (const w of c.name.split(/[\s,()&]+/)) {
-        const n = normalize(w);
-        if (n.length > 2) clubMap[n] = c.id;
-      }
-    }
-
-    // Build event name map
-    const eventMap: Record<string, string> = {};
-    const events = await database.getEvents();
-    for (const e of events) {
-      eventMap[normalize(e.title)] = e.id;
-      for (const w of e.title.split(/[\s,()&]+/)) {
-        const n = normalize(w);
-        if (n.length > 2) eventMap[n] = e.id;
-      }
-    }
-
-    const files = fs.readdirSync(imagesDir);
-    for (const file of files) {
-      const filePath = path.join(imagesDir, file);
-      if (!fs.statSync(filePath).isFile()) continue;
-
-      const ext = path.extname(file).toLowerCase();
+    function fileToDataUri(filePath: string): string | null {
+      const ext = path.extname(filePath).toLowerCase();
       const mimeMap: Record<string, string> = {
         '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
         '.gif': 'image/gif', '.webp': 'image/webp',
       };
       const mime = mimeMap[ext];
-      if (!mime) continue;
-
-      const skip = ['icon', 'favicon', 'splash-icon', 'adaptive-icon'];
-      const baseName = path.basename(file, ext);
-      if (skip.includes(normalize(baseName))) continue;
-
+      if (!mime) return null;
       const base64 = fs.readFileSync(filePath, { encoding: 'base64' });
-      const dataUri = `data:${mime};base64,${base64}`;
+      return `data:${mime};base64,${base64}`;
+    }
 
-      let entityType = 'club';
-      let entityId = clubMap[normalize(baseName)];
+    // Manual mapping: hash filename -> event_id (from mvp project's mock data)
+    const eventImageMap: Record<string, string[]> = {
+      '7903ba759388609c8cc053af8ae8dc4c60a50dd0.png': ['event_1'],      // Mr & Miss Cavendish
+      'd7ae4b74561b5c62377c6e8e1ada58ad3e80fef4.png': ['event_2', 'event_3', 'event_5', 'event_7'], // Fresher's Bash, Intl Welcome, Career Expo, Entrepreneurship Summit
+      '9740598005f689306f597b4d692dc46014798202.png': ['event_4'],      // Cultural Day Festival
+      '6356727368ab75ac3f4eea867fb27bcc7ccd9258.png': ['event_6'],      // ZUSA Games
+      'ed7bfb12660b2fe3e71ec2eb1a6f020bb7f683fa.png': ['event_8'],      // Medical Faculty Guest Lecture
+      'dfe3dd58b825e2385a751187d0e16cf5736a02da.png': ['event_3'],      // International Students Welcome (was unused in mvp)
+      'dev3pack_logo.jpg': ['event_dev3pack_hackathon'],
+    };
 
-      if (!entityId) {
-        entityType = 'event';
-        entityId = eventMap[normalize(baseName)];
-      }
+    // Manual mapping: filename -> club_id
+    const clubImageMap: Record<string, string> = {
+      'chess.jpg': 'club_9',
+      'CUZITA Club.jpeg': 'club_10',
+      'debate club.png': 'club_4',
+      'photography.jpg': 'club_8',
+    };
 
-      if (!entityId) {
-        for (const [key, id] of Object.entries(clubMap)) {
-          if (normalize(baseName).includes(key) || key.includes(normalize(baseName))) {
-            entityId = id;
-            entityType = 'club';
-            break;
+    const skipFiles = ['icon.png', 'favicon.png', 'splash-icon.png', 'adaptive-icon.png', 'colour-run.jpg', 'dev3pack.png'];
+
+    const files = fs.readdirSync(imagesDir);
+    for (const file of files) {
+      if (skipFiles.includes(file)) continue;
+      const filePath = path.join(imagesDir, file);
+      if (!fs.statSync(filePath).isFile()) continue;
+
+      const dataUri = fileToDataUri(filePath);
+      if (!dataUri) continue;
+
+      // Check event mapping first
+      const eventIds = eventImageMap[file];
+      if (eventIds) {
+        for (const eventId of eventIds) {
+          const existing = await database.getImagesByEntity('event', eventId);
+          if (existing.length === 0) {
+            await database.addImage({
+              id: `img_${uuidv4()}`,
+              entityType: 'event',
+              entityId: eventId,
+              imageData: dataUri,
+              createdAt: new Date().toISOString(),
+            });
+            console.log(`Seeded event image for ${eventId} from ${file}`);
           }
         }
+        continue;
       }
 
-      if (!entityId) {
-        for (const [key, id] of Object.entries(eventMap)) {
-          if (normalize(baseName).includes(key) || key.includes(normalize(baseName))) {
-            entityId = id;
-            entityType = 'event';
-            break;
-          }
-        }
-      }
-
-      if (entityId) {
-        const existing = await database.getImagesByEntity(entityType, entityId);
+      // Check club mapping
+      const clubId = clubImageMap[file];
+      if (clubId) {
+        const existing = await database.getImagesByEntity('club', clubId);
         if (existing.length === 0) {
           await database.addImage({
             id: `img_${uuidv4()}`,
-            entityType,
-            entityId,
+            entityType: 'club',
+            entityId: clubId,
             imageData: dataUri,
             createdAt: new Date().toISOString(),
           });
-          console.log(`Seeded image for ${entityType} ${entityId} from ${file}`);
+          console.log(`Seeded club image for ${clubId} from ${file}`);
         }
       } else {
-        console.log(`No match for image file: ${file}`);
+        console.log(`No mapping for image file: ${file}`);
       }
     }
   } catch (e) {
