@@ -31,6 +31,7 @@ export function ClubAdminScreen() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [addEmail, setAddEmail] = useState('');
   const [adding, setAdding] = useState(false);
+  const [pendingMembers, setPendingMembers] = useState<any[]>([]);
 
   const presidentId = userApi.getCurrentUser()?.id;
 
@@ -48,12 +49,14 @@ export function ClubAdminScreen() {
 
   const loadData = async () => {
     setLoading(true);
-    const [data, mems] = await Promise.all([
+    const [data, mems, pend] = await Promise.all([
       userApi.getClubForScreenById(clubId),
       userApi.getClubMembers(clubId),
+      userApi.getPendingMembers(clubId),
     ]);
     setClub(data);
     setMembers(mems);
+    setPendingMembers(pend);
     if (data) {
       setEditName(data.name);
       setEditSlogan(data.shortDescription);
@@ -99,6 +102,24 @@ export function ClubAdminScreen() {
       Alert.alert('Error', 'Failed to add member');
     }
     setAdding(false);
+  };
+
+  const handleApprove = async (userId: string) => {
+    try {
+      await userApi.approveMember(clubId, userId);
+      loadData();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to approve member');
+    }
+  };
+
+  const handleReject = async (userId: string) => {
+    try {
+      await userApi.rejectMember(clubId, userId);
+      loadData();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to reject member');
+    }
   };
 
   const handleRemoveMember = (userId: string, userName: string) => {
@@ -173,6 +194,28 @@ export function ClubAdminScreen() {
           <Text style={styles.cardTitle}>Add Member</Text>
           <Text style={styles.cardSub}>Add a user by email</Text>
         </TouchableOpacity>
+
+        {pendingMembers.length > 0 && (
+          <View style={styles.pendingSection}>
+            <Text style={styles.sectionTitle}>Pending Requests ({pendingMembers.length})</Text>
+            {pendingMembers.map((pm: any) => (
+              <View key={pm.id} style={styles.pendingItem}>
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName}>{pm.name}</Text>
+                  <Text style={styles.memberEmail}>{pm.email}</Text>
+                </View>
+                <View style={styles.pendingActions}>
+                  <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(pm.user_id)}>
+                    <Text style={styles.approveBtnText}>✓</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(pm.user_id)}>
+                    <Text style={styles.rejectBtnText}>✗</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Members ({members.length})</Text>
         {members.map((m: any) => (
@@ -280,6 +323,22 @@ const styles = StyleSheet.create({
   memberRole: { fontSize: 12, color: '#2563eb', marginTop: 2, fontWeight: '500' },
   removeBtn: { backgroundColor: '#fee2e2', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   removeBtnText: { color: '#dc2626', fontSize: 13, fontWeight: '600' },
+  pendingSection: { marginBottom: 16 },
+  pendingItem: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fffbeb',
+    borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#fde68a',
+  },
+  pendingActions: { flexDirection: 'row', gap: 8 },
+  approveBtn: {
+    backgroundColor: '#dcfce7', borderRadius: 20, width: 36, height: 36,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  approveBtnText: { color: '#16a34a', fontSize: 18, fontWeight: '700' },
+  rejectBtn: {
+    backgroundColor: '#fee2e2', borderRadius: 20, width: 36, height: 36,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  rejectBtnText: { color: '#dc2626', fontSize: 18, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   modalContent: { backgroundColor: '#fff', borderRadius: 20, padding: 20 },
   modalTitle: { fontSize: 20, fontWeight: '700', color: '#1e293b', marginBottom: 16 },

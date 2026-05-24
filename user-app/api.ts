@@ -324,6 +324,26 @@ class UserApi {
     return res.json();
   }
 
+  async getPendingMembers(clubId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/pending`);
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async approveMember(clubId: string, userId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/approve`, {
+      method: 'PUT',
+    });
+    if (!res.ok) throw new Error('Failed to approve member');
+  }
+
+  async rejectMember(clubId: string, userId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/reject`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to reject member');
+  }
+
   async updateClub(clubId: string, updates: any, presidentId: string) {
     const res = await fetch(`${BASE_URL}/clubs/${clubId}?presidentId=${presidentId}`, {
       method: 'PUT',
