@@ -52,36 +52,26 @@ async function seedImagesFromFiles() {
     const eventIds = eventImageMap[file];
     if (eventIds) {
       for (const eventId of eventIds) {
-        const existing = await pool.query(
-          'SELECT id FROM images WHERE entity_type = $1 AND entity_id = $2',
-          ['event', eventId]
+        await pool.query('DELETE FROM images WHERE entity_type = $1 AND entity_id = $2', ['event', eventId]);
+        await pool.query(
+          `INSERT INTO images (id, entity_type, entity_id, image_data, created_at)
+           VALUES ($1, $2, $3, $4, NOW())`,
+          [`img_${uuidv4()}`, 'event', eventId, dataUri]
         );
-        if (existing.rows.length === 0) {
-          await pool.query(
-            `INSERT INTO images (id, entity_type, entity_id, image_data, created_at)
-             VALUES ($1, $2, $3, $4, NOW())`,
-            [`img_${uuidv4()}`, 'event', eventId, dataUri]
-          );
-          console.log(`Seeded event image for ${eventId} from ${file}`);
-        }
+        console.log(`Seeded event image for ${eventId} from ${file}`);
       }
       continue;
     }
 
     const clubId = clubImageMap[file];
     if (clubId) {
-      const existing = await pool.query(
-        'SELECT id FROM images WHERE entity_type = $1 AND entity_id = $2',
-        ['club', clubId]
+      await pool.query('DELETE FROM images WHERE entity_type = $1 AND entity_id = $2', ['club', clubId]);
+      await pool.query(
+        `INSERT INTO images (id, entity_type, entity_id, image_data, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
+        [`img_${uuidv4()}`, 'club', clubId, dataUri]
       );
-      if (existing.rows.length === 0) {
-        await pool.query(
-          `INSERT INTO images (id, entity_type, entity_id, image_data, created_at)
-           VALUES ($1, $2, $3, $4, NOW())`,
-          [`img_${uuidv4()}`, 'club', clubId, dataUri]
-        );
-        console.log(`Seeded club image for ${clubId} from ${file}`);
-      }
+      console.log(`Seeded club image for ${clubId} from ${file}`);
     } else {
       console.log(`No mapping for image file: ${file}`);
     }

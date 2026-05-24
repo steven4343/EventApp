@@ -50,11 +50,11 @@ async function seedDB() {
       try { await database.addUserClub(uc); } catch (e: any) { console.log('UC exists:', uc.id); }
     }
     console.log('Seed complete');
-
-    await seedImages();
   } catch (e) {
     console.error('Seed failed:', e);
   }
+
+  await seedImages();
 }
 
 async function seedImages() {
@@ -112,17 +112,15 @@ async function seedImages() {
       const eventIds = eventImageMap[file];
       if (eventIds) {
         for (const eventId of eventIds) {
-          const existing = await database.getImagesByEntity('event', eventId);
-          if (existing.length === 0) {
-            await database.addImage({
-              id: `img_${uuidv4()}`,
-              entityType: 'event',
-              entityId: eventId,
-              imageData: dataUri,
-              createdAt: new Date().toISOString(),
-            });
-            console.log(`Seeded event image for ${eventId} from ${file}`);
-          }
+          await database.deleteImagesByEntity('event', eventId);
+          await database.addImage({
+            id: `img_${uuidv4()}`,
+            entityType: 'event',
+            entityId: eventId,
+            imageData: dataUri,
+            createdAt: new Date().toISOString(),
+          });
+          console.log(`Seeded event image for ${eventId} from ${file}`);
         }
         continue;
       }
@@ -130,17 +128,15 @@ async function seedImages() {
       // Check club mapping
       const clubId = clubImageMap[file];
       if (clubId) {
-        const existing = await database.getImagesByEntity('club', clubId);
-        if (existing.length === 0) {
-          await database.addImage({
-            id: `img_${uuidv4()}`,
-            entityType: 'club',
-            entityId: clubId,
-            imageData: dataUri,
-            createdAt: new Date().toISOString(),
-          });
-          console.log(`Seeded club image for ${clubId} from ${file}`);
-        }
+        await database.deleteImagesByEntity('club', clubId);
+        await database.addImage({
+          id: `img_${uuidv4()}`,
+          entityType: 'club',
+          entityId: clubId,
+          imageData: dataUri,
+          createdAt: new Date().toISOString(),
+        });
+        console.log(`Seeded club image for ${clubId} from ${file}`);
       } else {
         console.log(`No mapping for image file: ${file}`);
       }
