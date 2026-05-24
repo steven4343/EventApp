@@ -83,3 +83,11 @@ export interface UserReview {
   comment: string;
   createdAt: string;
 }
+
+export interface Image {
+  id: string;
+  entityType: 'event' | 'club';
+  entityId: string;
+  imageData: string;
+  createdAt: string;
+}

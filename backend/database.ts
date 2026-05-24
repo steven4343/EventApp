@@ -1,5 +1,5 @@
 import pool from './db';
-import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview } from './types';
+import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
 
 class Database {
   async initialize(): Promise<void> {
@@ -7,6 +7,8 @@ class Database {
     const path = require('path');
     const sql = fs.readFileSync(path.join(__dirname, 'migrations', '001_initial.sql'), 'utf-8');
     await pool.query(sql);
+    const sql2 = fs.readFileSync(path.join(__dirname, 'migrations', '002_images.sql'), 'utf-8');
+    await pool.query(sql2);
     console.log('Database initialized');
   }
 
@@ -253,7 +255,32 @@ class Database {
     return rows[0];
   }
 
+  async getImagesByEntity(entityType: string, entityId: string): Promise<Image[]> {
+    const { rows } = await pool.query(
+      'SELECT * FROM images WHERE entity_type = $1 AND entity_id = $2 ORDER BY created_at DESC',
+      [entityType, entityId]
+    );
+    return rows.map(mapImage);
+  }
+
+  async addImage(image: Image): Promise<void> {
+    await pool.query(
+      `INSERT INTO images (id, entity_type, entity_id, image_data, created_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [image.id, image.entityType, image.entityId, image.imageData, image.createdAt]
+    );
+  }
+
+  async deleteImage(id: string): Promise<void> {
+    await pool.query('DELETE FROM images WHERE id = $1', [id]);
+  }
+
+  async deleteImagesByEntity(entityType: string, entityId: string): Promise<void> {
+    await pool.query('DELETE FROM images WHERE entity_type = $1 AND entity_id = $2', [entityType, entityId]);
+  }
+
   async reset(): Promise<void> {
+    await pool.query('DELETE FROM images');
     await pool.query('DELETE FROM user_reviews');
     await pool.query('DELETE FROM user_clubs');
     await pool.query('DELETE FROM saved_events');
@@ -412,6 +439,16 @@ function mapUserReview(row: any): UserReview {
     itemType: row.item_type,
     rating: row.rating,
     comment: row.comment,
+    createdAt: row.created_at,
+  };
+}
+
+function mapImage(row: any): Image {
+  return {
+    id: row.id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    imageData: row.image_data,
     createdAt: row.created_at,
   };
 }

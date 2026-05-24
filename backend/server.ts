@@ -2,13 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import { database } from './database';
-import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview } from './types';
+import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use('/images', express.static('public/images'));
 
 // Initialize database
 database.initialize().catch(console.error);
@@ -49,8 +50,112 @@ async function seedDB() {
       try { await database.addUserClub(uc); } catch (e: any) { console.log('UC exists:', uc.id); }
     }
     console.log('Seed complete');
+
+    await seedImages();
   } catch (e) {
     console.error('Seed failed:', e);
+  }
+}
+
+async function seedImages() {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const { v4: uuidv4 } = require('uuid');
+
+    const imagesDir = path.join(__dirname, 'public', 'images');
+    if (!fs.existsSync(imagesDir)) return;
+
+    function normalize(s: string) { return s.toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+    // Build club name map
+    const clubMap: Record<string, string> = {};
+    const clubs = await database.getClubs();
+    for (const c of clubs) {
+      clubMap[normalize(c.name)] = c.id;
+      for (const w of c.name.split(/[\s,()&]+/)) {
+        const n = normalize(w);
+        if (n.length > 2) clubMap[n] = c.id;
+      }
+    }
+
+    // Build event name map
+    const eventMap: Record<string, string> = {};
+    const events = await database.getEvents();
+    for (const e of events) {
+      eventMap[normalize(e.title)] = e.id;
+      for (const w of e.title.split(/[\s,()&]+/)) {
+        const n = normalize(w);
+        if (n.length > 2) eventMap[n] = e.id;
+      }
+    }
+
+    const files = fs.readdirSync(imagesDir);
+    for (const file of files) {
+      const filePath = path.join(imagesDir, file);
+      if (!fs.statSync(filePath).isFile()) continue;
+
+      const ext = path.extname(file).toLowerCase();
+      const mimeMap: Record<string, string> = {
+        '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+        '.gif': 'image/gif', '.webp': 'image/webp',
+      };
+      const mime = mimeMap[ext];
+      if (!mime) continue;
+
+      const skip = ['icon', 'favicon', 'splash-icon', 'adaptive-icon'];
+      const baseName = path.basename(file, ext);
+      if (skip.includes(normalize(baseName))) continue;
+
+      const base64 = fs.readFileSync(filePath, { encoding: 'base64' });
+      const dataUri = `data:${mime};base64,${base64}`;
+
+      let entityType = 'club';
+      let entityId = clubMap[normalize(baseName)];
+
+      if (!entityId) {
+        entityType = 'event';
+        entityId = eventMap[normalize(baseName)];
+      }
+
+      if (!entityId) {
+        for (const [key, id] of Object.entries(clubMap)) {
+          if (normalize(baseName).includes(key) || key.includes(normalize(baseName))) {
+            entityId = id;
+            entityType = 'club';
+            break;
+          }
+        }
+      }
+
+      if (!entityId) {
+        for (const [key, id] of Object.entries(eventMap)) {
+          if (normalize(baseName).includes(key) || key.includes(normalize(baseName))) {
+            entityId = id;
+            entityType = 'event';
+            break;
+          }
+        }
+      }
+
+      if (entityId) {
+        const existing = await database.getImagesByEntity(entityType, entityId);
+        if (existing.length === 0) {
+          await database.addImage({
+            id: `img_${uuidv4()}`,
+            entityType,
+            entityId,
+            imageData: dataUri,
+            createdAt: new Date().toISOString(),
+          });
+          console.log(`Seeded image for ${entityType} ${entityId} from ${file}`);
+        }
+      } else {
+        console.log(`No match for image file: ${file}`);
+      }
+    }
+  } catch (e) {
+    console.error('Image seeding error:', e);
   }
 }
 
@@ -128,12 +233,18 @@ app.put('/api/users/:id', async (req, res) => {
 app.get('/api/events', async (req, res) => {
   const { status, category } = req.query;
   const events = await database.getEvents(status as string, category as string);
+  for (const event of events) {
+    const images = await database.getImagesByEntity('event', event.id);
+    if (images.length > 0) event.image = images[0].imageData;
+  }
   res.json(events);
 });
 
 app.get('/api/events/:id', async (req, res) => {
   const event = await database.getEventById(req.params.id);
   if (event) {
+    const images = await database.getImagesByEntity('event', event.id);
+    if (images.length > 0) event.image = images[0].imageData;
     res.json(event);
   } else {
     res.status(404).json({ error: 'Event not found' });
@@ -175,6 +286,10 @@ app.delete('/api/events/:id', async (req, res) => {
 app.get('/api/clubs', async (req, res) => {
   const { status } = req.query;
   const clubs = await database.getClubs(status as string);
+  for (const club of clubs) {
+    const images = await database.getImagesByEntity('club', club.id);
+    if (images.length > 0) club.image = images[0].imageData;
+  }
   res.json(clubs);
 });
 
@@ -202,6 +317,8 @@ app.delete('/api/clubs/:id', async (req, res) => {
 app.get('/api/clubs/:id', async (req, res) => {
   const club = await database.getClubById(req.params.id);
   if (club) {
+    const images = await database.getImagesByEntity('club', club.id);
+    if (images.length > 0) club.image = images[0].imageData;
     res.json(club);
   } else {
     res.status(404).json({ error: 'Club not found' });
@@ -428,6 +545,36 @@ app.get('/api/debug/seed', async (_req, res) => {
   } catch (e: any) {
     res.json({ error: e.message });
   }
+});
+
+// ==================== IMAGE ROUTES ====================
+
+app.get('/api/images/:entityType/:entityId', async (req, res) => {
+  const { entityType, entityId } = req.params;
+  const images = await database.getImagesByEntity(entityType, entityId);
+  res.json(images);
+});
+
+app.post('/api/images', async (req, res) => {
+  const image: Image = {
+    ...req.body,
+    id: `img_${uuidv4()}`,
+    createdAt: new Date().toISOString(),
+  };
+  await database.addImage(image);
+  res.status(201).json(image);
+});
+
+app.delete('/api/images/:id', async (req, res) => {
+  const { id } = req.params;
+  await database.deleteImage(id);
+  res.json({ message: 'Image deleted' });
+});
+
+app.delete('/api/images/:entityType/:entityId', async (req, res) => {
+  const { entityType, entityId } = req.params;
+  await database.deleteImagesByEntity(entityType, entityId);
+  res.json({ message: 'Images deleted' });
 });
 
 // ==================== STATS ====================
