@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../types/navigation';
@@ -11,20 +11,15 @@ type ProfileNavProp = NativeStackNavigationProp<ProfileStackParamList>;
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNavProp>();
   const { user, logout } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   if (!user) {
     return <LoginScreen onCancel={() => navigation.getParent()?.navigate('EventsTab')} />;
   }
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: async () => { await logout(); } },
-      ]
-    );
+  const handleLogout = async () => {
+    setShowLogoutConfirm(false);
+    await logout();
   };
 
   return (
@@ -84,7 +79,7 @@ export function ProfileScreen() {
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => setShowLogoutConfirm(true)}>
             <Text style={styles.menuIcon}>🚪</Text>
             <Text style={styles.menuLabel}>Log Out</Text>
             <Text style={styles.menuArrow}>›</Text>
@@ -93,6 +88,23 @@ export function ProfileScreen() {
 
         <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
+
+      <Modal visible={showLogoutConfirm} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.logoutModal}>
+            <Text style={styles.logoutTitle}>Log Out</Text>
+            <Text style={styles.logoutMessage}>Are you sure you want to log out?</Text>
+            <View style={styles.logoutButtons}>
+              <TouchableOpacity style={styles.logoutCancelBtn} onPress={() => setShowLogoutConfirm(false)}>
+                <Text style={styles.logoutCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.logoutConfirmBtn} onPress={handleLogout}>
+                <Text style={styles.logoutConfirmText}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -180,5 +192,60 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#94a3b8',
     marginVertical: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoutModal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '80%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  logoutTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  logoutMessage: {
+    fontSize: 15,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  logoutButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  logoutCancelBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+  },
+  logoutCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  logoutConfirmBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    backgroundColor: '#ef4444',
+  },
+  logoutConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

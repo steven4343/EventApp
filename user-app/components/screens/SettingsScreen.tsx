@@ -54,15 +54,11 @@ export function SettingsScreen() {
     Alert.alert('Language', `App language set to ${lang}. Restart to apply.`);
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: async () => { await logout(); } },
-      ]
-    );
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogout = async () => {
+    setShowLogoutConfirm(false);
+    await logout();
   };
 
   const handleDeleteAccount = () => {
@@ -119,7 +115,7 @@ export function SettingsScreen() {
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => setShowLogoutConfirm(true)}>
             <Text style={styles.menuIcon}>🚪</Text>
             <View style={styles.menuText}>
               <Text style={styles.menuLabel}>Log Out</Text>
@@ -275,6 +271,23 @@ export function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showLogoutConfirm} animationType="fade" transparent>
+        <View style={[styles.modalOverlay, { justifyContent: 'center' }]}>
+          <View style={styles.logoutModal}>
+            <Text style={styles.logoutTitle}>Log Out</Text>
+            <Text style={styles.logoutMessage}>Are you sure you want to log out?</Text>
+            <View style={styles.logoutButtons}>
+              <TouchableOpacity style={styles.logoutCancelBtn} onPress={() => setShowLogoutConfirm(false)}>
+                <Text style={styles.logoutCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.logoutConfirmBtn} onPress={handleLogout}>
+                <Text style={styles.logoutConfirmText}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -415,5 +428,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#64748b',
+  },
+  logoutModal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '80%',
+    maxWidth: 320,
+    alignItems: 'center',
+    marginHorizontal: 'auto',
+  },
+  logoutTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  logoutMessage: {
+    fontSize: 15,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  logoutButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  logoutCancelBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+  },
+  logoutCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  logoutConfirmBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    backgroundColor: '#ef4444',
+  },
+  logoutConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

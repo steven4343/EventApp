@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './components/screens/LoginScreen';
@@ -116,18 +116,22 @@ function HomeTabs({ requireAuth }: { requireAuth: () => void }) {
 
 function AppContent() {
   const { user } = useAuth();
+  const [ready, setReady] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
-  const prevUserRef = useRef(user);
 
   useEffect(() => {
-    if (!user && !showLogin) {
+    if (!ready) return;
+    if (!user) {
       setShowLogin(true);
+    } else {
+      setShowLogin(false);
     }
-    if (prevUserRef.current && !user) {
-      setShowLogin(true);
-    }
-    prevUserRef.current = user;
-  }, [user]);
+  }, [user, ready]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const requireAuth = () => {
     if (!user) {
@@ -136,6 +140,14 @@ function AppContent() {
     }
     return true;
   };
+
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+        <StatusBar style="auto" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
