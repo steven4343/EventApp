@@ -83,7 +83,8 @@ async function seedImages() {
     // Manual mapping: hash filename -> event_id (from mvp project's mock data)
     const eventImageMap: Record<string, string[]> = {
       '7903ba759388609c8cc053af8ae8dc4c60a50dd0.png': ['event_1'],      // Mr & Miss Cavendish
-      'd7ae4b74561b5c62377c6e8e1ada58ad3e80fef4.png': ['event_2', 'event_3', 'event_5', 'event_7'], // Fresher's Bash, Intl Welcome, Career Expo, Entrepreneurship Summit
+      'd7ae4b74561b5c62377c6e8e1ada58ad3e80fef4.png': ['event_2', 'event_3', 'event_5'], // Fresher's Bash, Intl Welcome, Career Expo
+      'entrenuer ship.jpg': ['event_7'], // Entrepreneurship Summit
       '9740598005f689306f597b4d692dc46014798202.png': ['event_4'],      // Cultural Day Festival
       '6356727368ab75ac3f4eea867fb27bcc7ccd9258.png': ['event_6'],      // ZUSA Games
       'ed7bfb12660b2fe3e71ec2eb1a6f020bb7f683fa.png': ['event_8'],      // Medical Faculty Guest Lecture
