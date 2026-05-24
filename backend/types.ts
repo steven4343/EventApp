@@ -86,7 +86,7 @@ export interface UserReview {
 
 export interface Image {
   id: string;
-  entityType: 'event' | 'club';
+  entityType: 'event' | 'club' | 'user';
   entityId: string;
   imageData: string;
   createdAt: string;

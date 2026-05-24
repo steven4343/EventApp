@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { useAuth } from '../../context/AuthContext';
 
 const FACULTIES = [
@@ -44,7 +45,11 @@ export function EditProfileScreen() {
     });
 
     if (!result.canceled) {
-      setAvatar(result.assets[0].uri);
+      const localUri = result.assets[0].uri;
+      const base64 = await FileSystem.readAsStringAsync(localUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      setAvatar(`data:image/jpeg;base64,${base64}`);
     }
   };
 

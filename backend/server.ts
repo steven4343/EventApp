@@ -157,8 +157,16 @@ app.listen(PORT, '0.0.0.0', async () => {
 
 // ==================== USER ROUTES ====================
 
+async function enrichUserAvatar(user: User | undefined): Promise<User | undefined> {
+  if (!user) return user;
+  const images = await database.getImagesByEntity('user', user.id);
+  if (images.length > 0) user.avatar = images[0].imageData;
+  return user;
+}
+
 app.get('/api/users', async (_req, res) => {
-  const users = await database.getUsers();
+  let users = await database.getUsers();
+  users = await Promise.all(users.map(u => enrichUserAvatar(u))) as User[];
   res.json(users);
 });
 
@@ -199,19 +207,35 @@ app.post('/api/users/login', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  const user = await database.authenticateUser(email, password);
+  let user = await database.authenticateUser(email, password);
   if (!user) {
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 
+  user = await enrichUserAvatar(user);
   res.json({ user });
 });
 
 app.put('/api/users/:id', async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
+
+  if (updates.avatar && updates.avatar.startsWith('data:')) {
+    const existing = await database.getImagesByEntity('user', id);
+    for (const img of existing) await database.deleteImage(img.id);
+    await database.addImage({
+      id: `img_${uuidv4()}`,
+      entityType: 'user',
+      entityId: id,
+      imageData: updates.avatar,
+      createdAt: new Date().toISOString(),
+    });
+    delete updates.avatar;
+  }
+
   await database.updateUser(id, updates);
-  const updated = await database.getUserById(id);
+  let updated = await database.getUserById(id);
+  updated = await enrichUserAvatar(updated);
   if (updated) {
     res.json({ user: updated });
   } else {
