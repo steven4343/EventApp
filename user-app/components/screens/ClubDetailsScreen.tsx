@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, ActivityIn
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Club } from '../../types';
 import { userApi } from '../../api';
+import { normalizeImage } from '../../utils/image';
 
 type RouteParams = {
   ClubDetails: {
@@ -130,7 +131,7 @@ export function ClubDetailsScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
-          <Image source={club.image} style={styles.clubImage} resizeMode="contain" />
+          <Image source={normalizeImage(club.image)} style={styles.clubImage} resizeMode="contain" />
           <View style={styles.headerOverlay}>
             <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
               <Text style={styles.categoryText}>{club.category}</Text>

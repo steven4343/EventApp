@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Event } from '../../types';
 import { Badge } from '../ui/Badge';
+import { normalizeImage } from '../../utils/image';
 
 interface EventCardProps {
   event: Event;
@@ -25,7 +26,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      <Image source={event.image} style={styles.image} resizeMode="contain" />
+      <Image source={normalizeImage(event.image)} style={styles.image} resizeMode="contain" />
       <View style={styles.content}>
         <View style={styles.header}>
           <Badge variant={categoryColors[event.category] || 'default'}>

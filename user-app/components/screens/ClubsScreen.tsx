@@ -3,6 +3,7 @@ import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, FlatLi
 import { useNavigation } from '@react-navigation/native';
 import { Club } from '../../types';
 import { userApi } from '../../api';
+import { normalizeImage } from '../../utils/image';
 
 const categoryColors: { [key: string]: string } = {
   'Health & Wellness': '#10b981',
@@ -50,7 +51,7 @@ export function ClubsScreen() {
     return (
       <TouchableOpacity style={styles.card} onPress={() => handleClubPress(item.id)} activeOpacity={0.7}>
         <View style={styles.cardContent}>
-          <Image source={item.image} style={styles.clubImage} resizeMode="contain" />
+          <Image source={normalizeImage(item.image)} style={styles.clubImage} resizeMode="contain" />
           <View style={styles.clubInfo}>
             <Text style={styles.clubName}>{item.name}</Text>
             <Text style={styles.description} numberOfLines={2}>{item.shortDescription}</Text>

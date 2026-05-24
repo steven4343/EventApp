@@ -5,6 +5,7 @@ import { Event } from '../../types';
 import { userApi } from '../../api';
 
 import { useAuth } from '../../context/AuthContext';
+import { normalizeImage } from '../../utils/image';
 
 export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => void }) {
   const { user } = useAuth();
@@ -75,7 +76,7 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
               onPress={() => handleEventPress(event)}
               activeOpacity={0.8}
             >
-              <Image source={event.image} style={styles.featuredImage} resizeMode="cover" />
+              <Image source={normalizeImage(event.image)} style={styles.featuredImage} resizeMode="cover" />
               <View style={styles.featuredOverlay}>
                 <View style={styles.featuredBadge}>
                   <Text style={styles.featuredBadgeText}>★ {event.rating}</Text>
@@ -103,7 +104,7 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
               onPress={() => handleEventPress(event)}
               activeOpacity={0.8}
             >
-              <Image source={event.image} style={styles.upcomingImage} resizeMode="cover" />
+              <Image source={normalizeImage(event.image)} style={styles.upcomingImage} resizeMode="cover" />
               <View style={styles.upcomingContent}>
                 <Text style={styles.upcomingTitle} numberOfLines={1}>{event.title}</Text>
                 <Text style={styles.upcomingDate}>📅 {formatDate(event.date)}</Text>
@@ -130,7 +131,7 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
               onPress={() => handleEventPress(event)}
               activeOpacity={0.8}
             >
-              <Image source={event.image} style={styles.freeImage} resizeMode="cover" />
+              <Image source={normalizeImage(event.image)} style={styles.freeImage} resizeMode="cover" />
               <View style={styles.freeContent}>
                 <Text style={styles.freeTitle} numberOfLines={1}>{event.title}</Text>
                 <Text style={styles.freeDate}>{formatDate(event.date)}</Text>

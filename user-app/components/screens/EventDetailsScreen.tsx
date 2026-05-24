@@ -6,6 +6,7 @@ import { userApi } from '../../api';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { RegistrationModal } from '../ui/RegistrationModal';
+import { normalizeImage } from '../../utils/image';
 
 export function EventDetailsScreen() {
   const navigation = useNavigation<any>();
@@ -73,7 +74,7 @@ export function EventDetailsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Image source={event.image} style={styles.image} resizeMode="contain" />
+        <Image source={normalizeImage(event.image)} style={styles.image} resizeMode="contain" />
         
         <TouchableOpacity 
           style={styles.backButton} 
