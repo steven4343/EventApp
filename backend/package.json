@@ -7,8 +7,7 @@
     "dev": "ts-node-dev --respawn server.ts",
     "seed": "ts-node seed.ts",
     "seed-images": "ts-node update-images.ts",
-    "migrate": "ts-node -e \"const {database} = require('./database'); database.initialize().then(() => { console.log('Migration complete'); process.exit(0); }).catch(e => { console.error(e); process.exit(1); })\"",
-    "setup": "ts-node -e \"const {database} = require('./database'); database.initialize().then(() => { console.log('Migration complete'); }).then(() => { require('./update-images'); }).catch(e => { console.error(e); process.exit(1); })\""
+    "migrate": "ts-node migrate.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
