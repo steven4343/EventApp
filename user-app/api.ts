@@ -40,11 +40,15 @@ interface BackendClub {
 }
 
 function toEventImage(url: string): { uri: string } {
-  return { uri: url || 'https://picsum.photos/seed/event/400' };
+  if (!url) return { uri: 'https://picsum.photos/seed/event/400' };
+  if (url.startsWith('http') || url.startsWith('data:')) return { uri: url };
+  return { uri: `https://picsum.photos/seed/${url}/400` };
 }
 
 function toClubImage(url: string): { uri: string } {
-  return { uri: url || 'https://picsum.photos/seed/club/400' };
+  if (!url) return { uri: 'https://picsum.photos/seed/club/400' };
+  if (url.startsWith('http') || url.startsWith('data:')) return { uri: url };
+  return { uri: `https://picsum.photos/seed/${url}/400` };
 }
 
 class UserApi {
