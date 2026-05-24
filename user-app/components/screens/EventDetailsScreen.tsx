@@ -14,13 +14,35 @@ export function EventDetailsScreen() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRegistration, setShowRegistration] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savedLoading, setSavedLoading] = useState(false);
 
   useEffect(() => {
     userApi.getEventById(eventId).then(data => {
       setEvent(data);
       setLoading(false);
     });
+    userApi.getSavedEvents().then(saved => {
+      const isEventSaved = saved.some((s: any) => s.eventId === eventId || s.id === eventId);
+      setIsSaved(isEventSaved);
+    }).catch(() => {});
   }, [eventId]);
+
+  const toggleSave = async () => {
+    setSavedLoading(true);
+    try {
+      if (isSaved) {
+        await userApi.unsaveEvent(eventId);
+        setIsSaved(false);
+      } else {
+        await userApi.saveEvent(eventId);
+        setIsSaved(true);
+      }
+    } catch (e) {
+      console.error('Failed to toggle save:', e);
+    }
+    setSavedLoading(false);
+  };
 
   if (loading) {
     return (
@@ -58,6 +80,10 @@ export function EventDetailsScreen() {
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.saveButton} onPress={toggleSave} disabled={savedLoading}>
+          <Text style={styles.saveButtonText}>{isSaved ? '❤️' : '🤍'}</Text>
         </TouchableOpacity>
 
         <View style={styles.content}>
@@ -142,6 +168,8 @@ export function EventDetailsScreen() {
         visible={showRegistration}
         onClose={() => setShowRegistration(false)}
         eventTitle={event.title}
+        eventId={event.id}
+        eventPrice={event.price}
       />
     </View>
   );
@@ -170,6 +198,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
+  },
+  saveButton: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    fontSize: 20,
   },
   content: {
     padding: 16,

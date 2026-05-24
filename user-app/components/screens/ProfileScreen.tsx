@@ -36,10 +36,13 @@ export function ProfileScreen() {
 
         <View style={styles.profileCard}>
           <Image
-            source={{ uri: 'https://picsum.photos/seed/guest/200' }}
+            source={{ uri: user.avatar || 'https://picsum.photos/seed/user/200' }}
             style={styles.avatar}
           />
-          <Text style={styles.name}>Guest</Text>
+          <Text style={styles.name}>{user.name || 'Guest'}</Text>
+          <Text style={styles.email}>{user.email}</Text>
+          {user.faculty ? <Text style={styles.faculty}>{user.faculty} • Year {user.year || 'N/A'}</Text> : null}
+          {user.studentId ? <Text style={styles.faculty}>{user.studentId}</Text> : null}
         </View>
 
         <View style={styles.menuSection}>

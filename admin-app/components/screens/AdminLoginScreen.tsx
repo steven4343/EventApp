@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { adminApi } from '../../api';
+import { User } from '../../types';
 
 interface AdminLoginScreenProps {
   onLogin: (user: any) => void;
@@ -43,10 +44,17 @@ export function AdminLoginScreen({ onLogin }: AdminLoginScreenProps) {
   };
 
   const handleGuestLogin = () => {
-    const guest = {
+    const guest: User = {
       id: 'guest',
       name: 'Guest Admin',
       email: 'guest@cavendish.edu',
+      password: '',
+      studentId: '',
+      faculty: '',
+      year: 0,
+      avatar: '',
+      joinedAt: new Date().toISOString(),
+      isActive: true,
       role: 'admin',
     };
     adminApi.setGuestAdmin(guest);

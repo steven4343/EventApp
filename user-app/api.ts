@@ -250,6 +250,43 @@ class UserApi {
     return res.json();
   }
 
+  async getReviews() {
+    if (!this.currentUser) return [];
+    const res = await fetch(`${BASE_URL}/reviews/${this.currentUser.id}`);
+    return res.json();
+  }
+
+  async addReview(itemId: string, itemType: 'event' | 'club', rating: number, comment: string) {
+    if (!this.currentUser) throw new Error('Not logged in');
+    const res = await fetch(`${BASE_URL}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: this.currentUser.id, itemId, itemType, rating, comment }),
+    });
+    return res.json();
+  }
+
+  async updateProfile(userId: string, updates: { name?: string; faculty?: string; year?: number; avatar?: string }) {
+    const res = await fetch(`${BASE_URL}/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error('Failed to update profile');
+    const data = await res.json();
+    return data.user || data;
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const res = await fetch(`${BASE_URL}/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    if (!res.ok) throw new Error('Failed to change password');
+    return true;
+  }
+
   async purchaseTicket(eventId: string, seat: string, price: number) {
     if (!this.currentUser) throw new Error('Not logged in');
     const res = await fetch(`${BASE_URL}/tickets`, {

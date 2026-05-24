@@ -157,7 +157,7 @@ class AdminApi {
   }
 
   async getPayments(status?: string): Promise<any[]> {
-    const url = status ? `${BASE_URL}/payments?status=${status}` : `${BASE_URL}/payments`;
+    const url = status ? `${BASE_URL}/tickets?status=${status}` : `${BASE_URL}/tickets`;
     const res = await fetch(url);
     return res.json();
   }

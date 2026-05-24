@@ -12,24 +12,24 @@ import { useNavigation } from '@react-navigation/native';
 import { userApi } from '../../api';
 import { Event } from '../../types';
 
-interface SavedEvent {
+interface SavedEventRaw {
   id: string;
   userId: string;
   eventId: string;
   savedAt: string;
-}
-
-interface SavedEventWithDetails {
-  id: string;
-  userId: string;
-  eventId: string;
-  savedAt: string;
-  event?: Event;
+  title?: string;
+  date?: string;
+  time?: string;
+  location?: string;
+  image?: string;
+  price?: number;
+  category?: string;
+  description?: string;
 }
 
 export function SavedEventsScreen() {
   const navigation = useNavigation<any>();
-  const [savedEvents, setSavedEvents] = useState<SavedEventWithDetails[]>([]);
+  const [savedEvents, setSavedEvents] = useState<SavedEventRaw[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,10 +52,10 @@ export function SavedEventsScreen() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const handleUnsave = async (eventId: string) => {
+  const handleUnsave = async (savedEventId: string) => {
     try {
-      await userApi.unsaveEvent(eventId);
-      setSavedEvents((prev) => prev.filter((se) => se.eventId !== eventId));
+      await userApi.unsaveEvent(savedEventId);
+      setSavedEvents((prev) => prev.filter((se) => se.eventId !== savedEventId));
     } catch (e) {
       console.error('Failed to unsave event:', e);
     }
@@ -101,22 +101,20 @@ export function SavedEventsScreen() {
 
         <View style={styles.list}>
           {savedEvents.map((saved) => {
-            const event = saved.event;
-            if (!event) return null;
             return (
               <TouchableOpacity
                 key={saved.id}
                 style={styles.eventCard}
-                onPress={() => navigation.navigate('EventsTab', { screen: 'EventDetails', params: { eventId: event.id } })}
+                onPress={() => navigation.navigate('EventsTab', { screen: 'EventDetails', params: { eventId: saved.eventId } })}
                 activeOpacity={0.8}
               >
-                <Image source={event.image} style={styles.eventImage} />
+                <Image source={{ uri: saved.image || 'https://picsum.photos/seed/event/400' }} style={styles.eventImage} />
                 <View style={styles.eventContent}>
-                  <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
-                  <Text style={styles.eventDate}>📅 {formatDate(event.date)}</Text>
+                  <Text style={styles.eventTitle} numberOfLines={1}>{saved.title || 'Unknown Event'}</Text>
+                  <Text style={styles.eventDate}>📅 {saved.date ? formatDate(saved.date) : 'TBA'}</Text>
                   <View style={styles.eventFooter}>
-                    <Text style={styles.eventPrice}>{event.price === 0 ? 'Free' : `K${event.price}`}</Text>
-                    <TouchableOpacity onPress={() => handleUnsave(event.eventId)} style={styles.unsaveButton}>
+                    <Text style={styles.eventPrice}>{!saved.price || saved.price === 0 ? 'Free' : `K${saved.price}`}</Text>
+                    <TouchableOpacity onPress={() => handleUnsave(saved.eventId)} style={styles.unsaveButton}>
                       <Text style={styles.unsaveText}>Remove</Text>
                     </TouchableOpacity>
                   </View>

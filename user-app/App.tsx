@@ -27,7 +27,7 @@ const Tab = createBottomTabNavigator();
 
 function ProfileStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator id="ProfileStack">
       <Stack.Screen name="ProfileMain" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
@@ -44,6 +44,7 @@ function ProfileStack() {
 function EventsStack({ requireAuth }: { requireAuth: () => void }) {
   return (
     <Stack.Navigator
+      id="EventsStack"
       screenOptions={{
         headerShown: true,
       }}
@@ -57,6 +58,7 @@ function EventsStack({ requireAuth }: { requireAuth: () => void }) {
 function ClubsStack({ requireAuth }: { requireAuth: () => void }) {
   return (
     <Stack.Navigator
+      id="ClubsStack"
       screenOptions={{
         headerShown: true,
       }}
@@ -70,6 +72,7 @@ function ClubsStack({ requireAuth }: { requireAuth: () => void }) {
 function HomeTabs({ requireAuth }: { requireAuth: () => void }) {
   return (
     <Tab.Navigator
+      id="HomeTabs"
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,18 @@ import {
   StyleSheet,
   Switch,
   Alert,
+  Linking,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { SettingsStackParamList } from '../../types/navigation';
+
+const DARK_MODE_KEY = 'cuz_events_dark_mode';
+const NOTIFICATIONS_KEY = 'cuz_events_notifications';
+const LANGUAGE_KEY = 'cuz_events_language';
 
 type SettingsNavProp = NativeStackNavigationProp<SettingsStackParamList>;
 
@@ -20,6 +27,32 @@ export function SettingsScreen() {
   const { user, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [language, setLanguage] = useState('English');
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(DARK_MODE_KEY).then(v => { if (v) setDarkMode(v === 'true'); });
+    AsyncStorage.getItem(NOTIFICATIONS_KEY).then(v => { if (v) setNotifications(v === 'true'); });
+    AsyncStorage.getItem(LANGUAGE_KEY).then(v => { if (v) setLanguage(v); });
+  }, []);
+
+  const toggleDarkMode = async (val: boolean) => {
+    setDarkMode(val);
+    await AsyncStorage.setItem(DARK_MODE_KEY, val.toString());
+  };
+
+  const toggleNotifications = async (val: boolean) => {
+    setNotifications(val);
+    await AsyncStorage.setItem(NOTIFICATIONS_KEY, val.toString());
+  };
+
+  const changeLanguage = async (lang: string) => {
+    setLanguage(lang);
+    setShowLanguagePicker(false);
+    await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+    Alert.alert('Language', `App language set to ${lang}. Restart to apply.`);
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -106,7 +139,7 @@ export function SettingsScreen() {
             </View>
             <Switch
               value={darkMode}
-              onValueChange={setDarkMode}
+              onValueChange={toggleDarkMode}
               trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
               thumbColor={darkMode ? '#2563eb' : '#f8fafc'}
             />
@@ -120,17 +153,17 @@ export function SettingsScreen() {
             </View>
             <Switch
               value={notifications}
-              onValueChange={setNotifications}
+              onValueChange={toggleNotifications}
               trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
               thumbColor={notifications ? '#2563eb' : '#f8fafc'}
             />
           </View>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => {}}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => setShowLanguagePicker(true)}>
             <Text style={styles.menuIcon}>🌐</Text>
             <View style={styles.menuText}>
               <Text style={styles.menuLabel}>Language</Text>
-              <Text style={styles.menuSubtext}>English</Text>
+              <Text style={styles.menuSubtext}>{language}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
@@ -138,7 +171,10 @@ export function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Privacy</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => {}}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert(
+            'Manage Data',
+            'You can request a copy of your data or delete your account by contacting support. Your data is stored securely and used only for app functionality.',
+          )}>
             <Text style={styles.menuIcon}>🛡️</Text>
             <View style={styles.menuText}>
               <Text style={styles.menuLabel}>Manage Data</Text>
@@ -147,7 +183,7 @@ export function SettingsScreen() {
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => {}}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL('https://cuzevents.com/privacy')}>
             <Text style={styles.menuIcon}>📄</Text>
             <View style={styles.menuText}>
               <Text style={styles.menuLabel}>Privacy Policy</Text>
@@ -168,7 +204,7 @@ export function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => {}}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => setShowAbout(true)}>
             <Text style={styles.menuIcon}>ℹ️</Text>
             <View style={styles.menuText}>
               <Text style={styles.menuLabel}>About App</Text>
@@ -177,7 +213,7 @@ export function SettingsScreen() {
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => {}}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL('https://cuzevents.com/terms')}>
             <Text style={styles.menuIcon}>📋</Text>
             <View style={styles.menuText}>
               <Text style={styles.menuLabel}>Terms of Service</Text>
@@ -198,6 +234,47 @@ export function SettingsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal visible={showLanguagePicker} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Language</Text>
+            {['English', 'French', 'Portuguese', 'Swahili'].map(lang => (
+              <TouchableOpacity
+                key={lang}
+                style={[styles.langOption, language === lang && styles.langOptionSelected]}
+                onPress={() => changeLanguage(lang)}
+              >
+                <Text style={[styles.langOptionText, language === lang && styles.langOptionTextSelected]}>
+                  {lang}
+                </Text>
+                {language === lang && <Text style={styles.langCheck}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowLanguagePicker(false)}>
+              <Text style={styles.modalCloseText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showAbout} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>About CUZ Events</Text>
+            <Text style={{ fontSize: 15, color: '#475569', lineHeight: 22, marginTop: 8 }}>Version 1.0.0</Text>
+            <Text style={{ fontSize: 15, color: '#475569', lineHeight: 22, marginTop: 12 }}>
+              CUZ Events is your campus companion for discovering and managing university events and clubs at Cavendish University Zambia.
+            </Text>
+            <Text style={{ fontSize: 13, color: '#94a3b8', lineHeight: 22, marginTop: 12 }}>
+              {'\u00A9'} 2026 Cavendish University Zambia. All rights reserved.
+            </Text>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowAbout(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -282,5 +359,61 @@ const styles = StyleSheet.create({
   },
   deleteArrow: {
     color: '#ef4444',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 16,
+  },
+  langOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    borderRadius: 12,
+  },
+  langOptionSelected: {
+    backgroundColor: '#dbeafe',
+  },
+  langOptionText: {
+    fontSize: 16,
+    color: '#1e293b',
+  },
+  langOptionTextSelected: {
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+  langCheck: {
+    fontSize: 18,
+    color: '#2563eb',
+    fontWeight: '700',
+  },
+  modalCloseButton: {
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 20,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748b',
   },
 });

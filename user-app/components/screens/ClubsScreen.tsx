@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, FlatList, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, FlatList, Image, ActivityIndicator, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Club } from '../../types';
 import { userApi } from '../../api';
@@ -21,6 +21,8 @@ export function ClubsScreen() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<View>(null);
 
   useEffect(() => {
     userApi.getClubsForScreen().then(data => {
@@ -82,13 +84,50 @@ export function ClubsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.headerTitle}>Cavendish University Zambia</Text>
-            <Text style={styles.headerSubtitle}>Clubs</Text>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerContent}>
+            <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.headerTitle}>Cavendish University Zambia</Text>
+              <Text style={styles.headerSubtitle}>Clubs</Text>
+              <Text style={styles.headerTagline}>Find Your People. Make Your Mark.</Text>
+            </View>
           </View>
+          <Pressable style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
+            <Text style={styles.menuDots}>⋮</Text>
+          </Pressable>
         </View>
+        {showMenu && (
+          <>
+            <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)} />
+            <View style={styles.dropdown} ref={menuRef}>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('EventsTab' as never); }}>
+                <Text style={styles.dropdownIcon}>📅</Text>
+                <Text style={styles.dropdownText}>Events</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('ClubsTab' as never); }}>
+                <Text style={styles.dropdownIcon}>🏛️</Text>
+                <Text style={styles.dropdownText}>Clubs</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('Profile'); }}>
+                <Text style={styles.dropdownIcon}>👤</Text>
+                <Text style={styles.dropdownText}>Profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('MyTickets'); }}>
+                <Text style={styles.dropdownIcon}>🎫</Text>
+                <Text style={styles.dropdownText}>My Tickets</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('SavedEvents'); }}>
+                <Text style={styles.dropdownIcon}>❤️</Text>
+                <Text style={styles.dropdownText}>Saved Events</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('Settings'); }}>
+                <Text style={styles.dropdownIcon}>⚙️</Text>
+                <Text style={styles.dropdownText}>Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
 
       <FlatList
@@ -153,12 +192,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563eb',
     paddingTop: 24,
     paddingHorizontal: 16,
-    height: 80,
+    paddingBottom: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 10,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
   headerTextWrap: {
     flex: 1,
@@ -178,6 +230,68 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#bfdbfe',
     marginTop: 2,
+  },
+  headerTagline: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#93c5fd',
+    marginTop: 1,
+    letterSpacing: 0.5,
+    fontStyle: 'italic',
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuDots: {
+    fontSize: 22,
+    color: '#fff',
+    fontWeight: '700',
+    lineHeight: 24,
+  },
+  menuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: -1000,
+    zIndex: 20,
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 88,
+    right: 16,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 6,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    zIndex: 30,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  dropdownIcon: {
+    fontSize: 18,
+    width: 24,
+    textAlign: 'center',
+  },
+  dropdownText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
   },
   searchContainer: {
     paddingHorizontal: 16,

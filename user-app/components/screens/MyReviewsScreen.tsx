@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { userApi } from '../../api';
 
 interface ReviewItem {
   id: string;
@@ -16,14 +18,35 @@ interface ReviewItem {
   rating: number;
   comment: string;
   createdAt: string;
-  itemName?: string;
 }
-
-const MOCK_REVIEWS: UserReview[] = [];
 
 export function MyReviewsScreen() {
   const navigation = useNavigation();
-  const [reviews] = useState<UserReview[]>(MOCK_REVIEWS);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadReviews();
+  }, []);
+
+  const loadReviews = async () => {
+    try {
+      const data = await userApi.getReviews();
+      setReviews(data || []);
+    } catch (e) {
+      console.error('Failed to load reviews:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
 
   const renderStars = (rating: number) => {
     return '★'.repeat(rating) + '☆'.repeat(5 - rating);
@@ -88,6 +111,12 @@ export function MyReviewsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#f8fafc',
   },
   header: {

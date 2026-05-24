@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Modal, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, Modal, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { Button } from './Button';
+import { userApi } from '../../api';
 
 interface RegistrationModalProps {
   visible: boolean;
   onClose: () => void;
   eventTitle: string;
+  eventId: string;
+  eventPrice: number;
 }
 
-export function RegistrationModal({ visible, onClose, eventTitle }: RegistrationModalProps) {
+export function RegistrationModal({ visible, onClose, eventTitle, eventId, eventPrice }: RegistrationModalProps) {
   const [fullName, setFullName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [email, setEmail] = useState('');
@@ -20,9 +23,13 @@ export function RegistrationModal({ visible, onClose, eventTitle }: Registration
     if (!fullName || !studentId || !email) return;
     
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      await userApi.purchaseTicket(eventId, `Seat ${Math.floor(Math.random() * 1000)}`, eventPrice);
+      setIsSuccess(true);
+    } catch (e: any) {
+      Alert.alert('Registration Failed', e.message || 'Could not register for event');
+    }
     setIsSubmitting(false);
-    setIsSuccess(true);
   };
 
   const handleClose = () => {

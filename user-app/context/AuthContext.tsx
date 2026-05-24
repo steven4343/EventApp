@@ -36,7 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const stored = await AsyncStorage.getItem(USER_STORAGE_KEY);
       if (stored) {
-        setUser(JSON.parse(stored));
+        const profile = JSON.parse(stored);
+        setUser(profile);
+        userApi.setCurrentUser(profile);
       }
     } catch (e) {
       console.error('Failed to load stored user:', e);
@@ -69,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar: apiUser.avatar,
         };
         setUser(profile);
+        userApi.setCurrentUser(profile);
         storeUser(profile);
         return true;
       }
@@ -112,9 +115,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (data: Partial<UserProfile>): Promise<boolean> => {
     try {
       if (!user) return false;
-      const updated = { ...user, ...data };
-      setUser(updated);
-      storeUser(updated);
+      const updatedUser = await userApi.updateProfile(user.id, data);
+      const profile: UserProfile = {
+        id: updatedUser.id || user.id,
+        name: updatedUser.name || data.name || user.name,
+        email: updatedUser.email || user.email,
+        studentId: updatedUser.studentId || user.studentId,
+        faculty: updatedUser.faculty || data.faculty || user.faculty,
+        year: updatedUser.year || data.year || user.year,
+        avatar: updatedUser.avatar || data.avatar || user.avatar,
+      };
+      setUser(profile);
+      storeUser(profile);
       return true;
     } catch (e) {
       console.error('Update profile error:', e);
@@ -122,8 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const changePassword = async (_currentPassword: string, _newPassword: string): Promise<boolean> => {
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     try {
+      if (!user) return false;
+      await userApi.changePassword(user.id, currentPassword, newPassword);
       return true;
     } catch (e) {
       console.error('Change password error:', e);

@@ -11,26 +11,22 @@ import { useNavigation } from '@react-navigation/native';
 import { userApi } from '../../api';
 import { Club } from '../../types';
 
-interface UserClub {
+interface UserClubFlat {
   id: string;
   userId: string;
   clubId: string;
   role: string;
   joinedAt: string;
-}
-
-interface UserClubWithDetails {
-  id: string;
-  userId: string;
-  clubId: string;
-  role: string;
-  joinedAt: string;
-  club?: Club;
+  name?: string;
+  category?: string;
+  image?: string;
+  members?: number;
+  rating?: number;
 }
 
 export function MyClubsScreen() {
   const navigation = useNavigation<any>();
-  const [userClubs, setUserClubs] = useState<UserClubWithDetails[]>([]);
+  const [userClubs, setUserClubs] = useState<UserClubFlat[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -97,26 +93,24 @@ export function MyClubsScreen() {
 
         <View style={styles.list}>
           {userClubs.map((uc) => {
-            const club = uc.club;
-            if (!club) return null;
             return (
               <View key={uc.id} style={styles.clubCard}>
                 <TouchableOpacity
                   style={styles.clubInfo}
-                  onPress={() => navigation.navigate('ClubsTab', { screen: 'ClubDetails', params: { clubId: club.id } })}
+                  onPress={() => navigation.navigate('ClubsTab', { screen: 'ClubDetails', params: { clubId: uc.clubId } })}
                   activeOpacity={0.8}
                 >
                   <View style={styles.clubIcon}>
                     <Text style={styles.clubIconText}>🏠</Text>
                   </View>
                   <View style={styles.clubDetails}>
-                    <Text style={styles.clubName} numberOfLines={1}>{club.name}</Text>
-                    <Text style={styles.clubCategory}>{club.category}</Text>
-                    <Text style={styles.clubMeta}>👥 {club.members} members • ⭐ {club.rating}</Text>
+                    <Text style={styles.clubName} numberOfLines={1}>{uc.name || 'Unknown Club'}</Text>
+                    <Text style={styles.clubCategory}>{uc.category || ''}</Text>
+                    <Text style={styles.clubMeta}>👥 {uc.members || 0} members • ⭐ {uc.rating || 0}</Text>
                     <Text style={styles.clubRole}>Role: {uc.role}</Text>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.leaveButton} onPress={() => handleLeaveClub(club.id)}>
+                <TouchableOpacity style={styles.leaveButton} onPress={() => handleLeaveClub(uc.clubId)}>
                   <Text style={styles.leaveText}>Leave</Text>
                 </TouchableOpacity>
               </View>

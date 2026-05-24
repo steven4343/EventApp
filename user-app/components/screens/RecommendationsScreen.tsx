@@ -35,6 +35,10 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
     navigation.navigate('EventsTab', { screen: 'EventDetails', params: { eventId: event.id } });
   };
 
+  const handleSeeAll = (filter: 'trending' | 'upcoming' | 'free') => {
+    navigation.navigate('EventsTab', { screen: 'EventList' });
+  };
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -61,7 +65,7 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>🔥 Trending Now</Text>
-          <Text style={styles.seeAll}>See all</Text>
+          <TouchableOpacity onPress={() => handleSeeAll('trending')}><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {featuredEvents.map(event => (
@@ -89,7 +93,7 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>📅 Upcoming Soon</Text>
-          <Text style={styles.seeAll}>See all</Text>
+          <TouchableOpacity onPress={() => handleSeeAll('upcoming')}><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
         </View>
         <View style={styles.upcomingList}>
           {upcomingEvents.map(event => (
@@ -116,7 +120,7 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>🎉 Free Events</Text>
-          <Text style={styles.seeAll}>See all</Text>
+          <TouchableOpacity onPress={() => handleSeeAll('free')}><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
         </View>
         <View style={styles.freeGrid}>
           {freeEvents.map(event => (
@@ -141,27 +145,35 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
           <Text style={styles.sectionTitle}>📌 Pinned by Students</Text>
         </View>
         <View style={styles.pinnedContainer}>
-          <View style={styles.pinnedCard}>
-            <Text style={styles.pinnedIcon}>🎓</Text>
-            <View style={styles.pinnedContent}>
-              <Text style={styles.pinnedTitle}>Graduation Ceremony</Text>
-              <Text style={styles.pinnedSubtitle}>Most bookmarked event</Text>
-            </View>
-          </View>
-          <View style={styles.pinnedCard}>
-            <Text style={styles.pinnedIcon}>🎨</Text>
-            <View style={styles.pinnedContent}>
-              <Text style={styles.pinnedTitle}>Cultural Day Festival</Text>
-              <Text style={styles.pinnedSubtitle}>Highest rated this month</Text>
-            </View>
-          </View>
-          <View style={styles.pinnedCard}>
-            <Text style={styles.pinnedIcon}>⚽</Text>
-            <View style={styles.pinnedContent}>
-              <Text style={styles.pinnedTitle}>ZUSA Games 2025</Text>
-              <Text style={styles.pinnedSubtitle}>Most attendees</Text>
-            </View>
-          </View>
+          {events.length > 0 && (() => {
+            const highestRated = events.reduce((a, b) => a.rating > b.rating ? a : b);
+            const mostAttendees = events.reduce((a, b) => a.attendees > b.attendees ? a : b);
+            return (
+              <>
+                <TouchableOpacity style={styles.pinnedCard} onPress={() => handleEventPress(events[0])}>
+                  <Text style={styles.pinnedIcon}>📌</Text>
+                  <View style={styles.pinnedContent}>
+                    <Text style={styles.pinnedTitle}>{events[0].title}</Text>
+                    <Text style={styles.pinnedSubtitle}>First listed event</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.pinnedCard} onPress={() => handleEventPress(highestRated)}>
+                  <Text style={styles.pinnedIcon}>⭐</Text>
+                  <View style={styles.pinnedContent}>
+                    <Text style={styles.pinnedTitle}>{highestRated.title}</Text>
+                    <Text style={styles.pinnedSubtitle}>Highest rated ({highestRated.rating})</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.pinnedCard} onPress={() => handleEventPress(mostAttendees)}>
+                  <Text style={styles.pinnedIcon}>👥</Text>
+                  <View style={styles.pinnedContent}>
+                    <Text style={styles.pinnedTitle}>{mostAttendees.title}</Text>
+                    <Text style={styles.pinnedSubtitle}>Most attendees ({mostAttendees.attendees})</Text>
+                  </View>
+                </TouchableOpacity>
+              </>
+            );
+          })()}
         </View>
       </View>
 
