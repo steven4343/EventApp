@@ -4,6 +4,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-production-9af6.up.railway.app/api';
 const ADMIN_STORAGE_KEY = 'cuz_events_admin';
 
+async function apiFetch(url: string, options?: RequestInit, timeoutMs = 15000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res;
+  } catch (e) {
+    clearTimeout(timeout);
+    throw e;
+  }
+}
+
 class AdminApi {
   private currentAdmin: User | null = null;
 
@@ -19,11 +33,19 @@ class AdminApi {
   }
 
   async login(email: string, password: string): Promise<User | null> {
-    const res = await fetch(`${BASE_URL}/users/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!res.ok) return null;
     const result = await res.json();
     const user = result.user;
@@ -52,20 +74,25 @@ class AdminApi {
     if (category) params.set('category', category);
     const qs = params.toString();
     const url = qs ? `${BASE_URL}/events?${qs}` : `${BASE_URL}/events`;
-    const res = await fetch(url);
+    const res = await apiFetch(url);
     return res.json();
   }
 
   async getEventById(id: string): Promise<Event | null> {
-    const res = await fetch(`${BASE_URL}/events/${id}`);
-    if (!res.ok) return null;
-    return res.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(`${BASE_URL}/events/${id}`, { signal: controller.signal });
+      if (!res.ok) return null;
+      return res.json();
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   async createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'createdBy' | 'clubId'> & { clubId?: string }): Promise<Event> {
     const body: Record<string, any> = { ...eventData, createdBy: this.currentAdmin?.id || 'admin_001' };
-    if (!body.clubId) body.clubId = null;
-    const res = await fetch(`${BASE_URL}/events`, {
+    const res = await apiFetch(`${BASE_URL}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -74,7 +101,7 @@ class AdminApi {
   }
 
   async updateEvent(id: string, updates: Partial<Event>): Promise<void> {
-    await fetch(`${BASE_URL}/events/${id}`, {
+    await apiFetch(`${BASE_URL}/events/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -90,23 +117,29 @@ class AdminApi {
   }
 
   async deleteEvent(id: string): Promise<void> {
-    await fetch(`${BASE_URL}/events/${id}`, { method: 'DELETE' });
+    await apiFetch(`${BASE_URL}/events/${id}`, { method: 'DELETE' });
   }
 
   async getClubs(status?: string): Promise<Club[]> {
     const url = status ? `${BASE_URL}/clubs?status=${status}` : `${BASE_URL}/clubs`;
-    const res = await fetch(url);
+    const res = await apiFetch(url);
     return res.json();
   }
 
   async getClubById(id: string): Promise<Club | null> {
-    const res = await fetch(`${BASE_URL}/clubs/${id}`);
-    if (!res.ok) return null;
-    return res.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(`${BASE_URL}/clubs/${id}`, { signal: controller.signal });
+      if (!res.ok) return null;
+      return res.json();
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   async createClub(clubData: Omit<Club, 'id' | 'established'>): Promise<Club> {
-    const res = await fetch(`${BASE_URL}/clubs`, {
+    const res = await apiFetch(`${BASE_URL}/clubs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(clubData),
@@ -115,7 +148,7 @@ class AdminApi {
   }
 
   async updateClub(id: string, updates: Partial<Club>): Promise<void> {
-    await fetch(`${BASE_URL}/clubs/${id}`, {
+    await apiFetch(`${BASE_URL}/clubs/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -131,39 +164,39 @@ class AdminApi {
   }
 
   async deleteClub(id: string): Promise<void> {
-    await fetch(`${BASE_URL}/clubs/${id}`, { method: 'DELETE' });
+    await apiFetch(`${BASE_URL}/clubs/${id}`, { method: 'DELETE' });
   }
 
   async getPresidentClubs(userId: string): Promise<Club[]> {
-    const res = await fetch(`${BASE_URL}/users/${userId}/president-clubs`);
+    const res = await apiFetch(`${BASE_URL}/users/${userId}/president-clubs`);
     return res.json();
   }
 
   async getPendingMembers(clubId: string): Promise<any[]> {
-    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/pending`);
+    const res = await apiFetch(`${BASE_URL}/clubs/${clubId}/members/pending`);
     return res.json();
   }
 
   async approveMember(clubId: string, userId: string): Promise<void> {
-    await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/approve`, {
+    await apiFetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/approve`, {
       method: 'PUT',
     });
   }
 
   async rejectMember(clubId: string, userId: string): Promise<void> {
-    await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/reject`, {
+    await apiFetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/reject`, {
       method: 'DELETE',
     });
   }
 
   async getPayments(status?: string): Promise<any[]> {
     const url = status ? `${BASE_URL}/tickets?status=${status}` : `${BASE_URL}/tickets`;
-    const res = await fetch(url);
+    const res = await apiFetch(url);
     return res.json();
   }
 
   async verifyPayment(ticketId: string, adminId: string): Promise<void> {
-    await fetch(`${BASE_URL}/tickets/${ticketId}/verify`, {
+    await apiFetch(`${BASE_URL}/tickets/${ticketId}/verify`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminId }),
@@ -171,7 +204,7 @@ class AdminApi {
   }
 
   async rejectPayment(ticketId: string, adminId: string): Promise<void> {
-    await fetch(`${BASE_URL}/tickets/${ticketId}/reject`, {
+    await apiFetch(`${BASE_URL}/tickets/${ticketId}/reject`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminId }),
@@ -179,12 +212,12 @@ class AdminApi {
   }
 
   async getUsers(): Promise<User[]> {
-    const res = await fetch(`${BASE_URL}/users`);
+    const res = await apiFetch(`${BASE_URL}/users`);
     return res.json();
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<void> {
-    await fetch(`${BASE_URL}/users/${id}`, {
+    await apiFetch(`${BASE_URL}/users/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -192,7 +225,7 @@ class AdminApi {
   }
 
   async getStats(): Promise<any> {
-    const res = await fetch(`${BASE_URL}/stats`);
+    const res = await apiFetch(`${BASE_URL}/stats`);
     const stats = await res.json();
     const [events, clubs] = await Promise.all([
       this.getEvents(),

@@ -267,11 +267,19 @@ app.get('/api/events/:id', async (req, res) => {
 });
 
 app.post('/api/events', async (req, res) => {
-  const event = req.body as Event;
-  event.id = `event_${uuidv4()}`;
-  event.createdAt = new Date().toISOString().split('T')[0];
-  await database.addEvent(event);
-  res.status(201).json(event);
+  try {
+    const event = req.body as Event;
+    if (!event.title || !event.date || !event.location) {
+      return res.status(400).json({ error: 'Title, date, and location are required' });
+    }
+    event.id = `event_${uuidv4()}`;
+    event.createdAt = new Date().toISOString().split('T')[0];
+    await database.addEvent(event);
+    res.status(201).json(event);
+  } catch (e: any) {
+    console.error('Failed to create event:', e);
+    res.status(500).json({ error: 'Failed to create event', details: e.message });
+  }
 });
 
 app.put('/api/events/:id', async (req, res) => {
@@ -309,13 +317,18 @@ app.get('/api/clubs', async (req, res) => {
 });
 
 app.post('/api/clubs', async (req, res) => {
-  const club: Club = {
-    ...req.body,
-    id: `club_${uuidv4()}`,
-    established: new Date().toISOString().split('T')[0],
-  };
-  await database.addClub(club);
-  res.status(201).json(club);
+  try {
+    const club: Club = {
+      ...req.body,
+      id: `club_${uuidv4()}`,
+      established: new Date().toISOString().split('T')[0],
+    };
+    await database.addClub(club);
+    res.status(201).json(club);
+  } catch (e: any) {
+    console.error('Failed to create club:', e);
+    res.status(500).json({ error: 'Failed to create club', details: e.message });
+  }
 });
 
 app.delete('/api/clubs/:id', async (req, res) => {
@@ -691,6 +704,12 @@ app.delete('/api/images/:entityType/:entityId', async (req, res) => {
 app.get('/api/stats', async (_req, res) => {
   const stats = await database.getStats();
   res.json(stats);
+});
+
+// Global error handler (must be after all routes)
+app.use((err: any, _req: any, res: any, _next: any) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error', details: err?.message || '' });
 });
 
 
