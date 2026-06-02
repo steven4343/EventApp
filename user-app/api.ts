@@ -76,6 +76,17 @@ class UserApi {
     return user;
   }
 
+  async registerPushToken(token: string): Promise<void> {
+    if (!this.currentUser) return;
+    try {
+      await fetch(`${BASE_URL}/push-tokens/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: this.currentUser.id, token }),
+      });
+    } catch {}
+  }
+
   async register(userData: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number }) {
     const res = await fetch(`${BASE_URL}/users/register`, {
       method: 'POST',

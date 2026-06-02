@@ -11,6 +11,8 @@ class Database {
     await pool.query(sql2);
     const sql3 = fs.readFileSync(path.join(__dirname, 'migrations', '003_club_admin_password.sql'), 'utf-8');
     await pool.query(sql3);
+    const sql4 = fs.readFileSync(path.join(__dirname, 'migrations', '004_push_tokens.sql'), 'utf-8');
+    await pool.query(sql4);
     console.log('Database initialized');
   }
 
@@ -304,6 +306,19 @@ class Database {
     const { rows } = await pool.query('SELECT admin_password FROM clubs WHERE id = $1', [clubId]);
     if (rows.length === 0) return false;
     return rows[0].admin_password === password;
+  }
+
+  async registerPushToken(userId: string, token: string): Promise<void> {
+    await pool.query(
+      `INSERT INTO push_tokens (id, user_id, token) VALUES ($1, $2, $3)
+       ON CONFLICT (token) DO UPDATE SET user_id = $2`,
+      [`pt_${token.slice(-12)}`, userId, token]
+    );
+  }
+
+  async getPushTokens(): Promise<string[]> {
+    const { rows } = await pool.query('SELECT DISTINCT token FROM push_tokens');
+    return rows.map(r => r.token);
   }
 
   async reset(): Promise<void> {

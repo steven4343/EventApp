@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, StyleSheet, AppState } from 'react-native';
-import { requestPermissions, getLastCheckTime, setLastCheckTime, notifyNewEvent } from './utils/notifications';
+import { requestPermissions, getExpoPushToken, getLastCheckTime, setLastCheckTime, notifyNewEvent } from './utils/notifications';
 import { userApi } from './api';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -140,7 +140,10 @@ function AppContent() {
 
   useEffect(() => {
     if (!ready || !user) return;
-    requestPermissions();
+    requestPermissions().then(async () => {
+      const token = await getExpoPushToken();
+      if (token) await userApi.registerPushToken(token);
+    });
     const checkNewEvents = async () => {
       try {
         const lastCheck = await getLastCheckTime();

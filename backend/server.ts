@@ -291,6 +291,9 @@ app.post('/api/events', async (req, res) => {
     event.id = `event_${uuidv4()}`;
     event.createdAt = new Date().toISOString().split('T')[0];
     await database.addEvent(event);
+    if (event.status === 'Published') {
+      sendPushNotifications('New Event Posted', event.title);
+    }
     res.status(201).json(event);
   } catch (e: any) {
     console.error('Failed to create event:', e);
@@ -298,14 +301,44 @@ app.post('/api/events', async (req, res) => {
   }
 });
 
+async function sendPushNotifications(title: string, body: string): Promise<void> {
+  try {
+    const tokens = await database.getPushTokens();
+    if (tokens.length === 0) return;
+    const messages = tokens.map(token => ({
+      to: token,
+      sound: 'default',
+      title,
+      body,
+      priority: 'high',
+    }));
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(messages),
+    });
+  } catch (e) {
+    console.error('Failed to send push notifications:', e);
+  }
+}
+
 app.put('/api/events/:id', async (req, res) => {
-  const { id } = req.params;
-  await database.updateEvent(id, req.body);
-  const event = await database.getEventById(id);
-  if (event) {
-    res.json(event);
-  } else {
-    res.status(404).json({ error: 'Event not found' });
+  try {
+    const { id } = req.params;
+    const before = await database.getEventById(id);
+    await database.updateEvent(id, req.body);
+    const event = await database.getEventById(id);
+    if (event) {
+      if ((!before || before.status !== 'Published') && event.status === 'Published') {
+        sendPushNotifications('New Event Posted', event.title);
+      }
+      res.json(event);
+    } else {
+      res.status(404).json({ error: 'Event not found' });
+    }
+  } catch (e: any) {
+    console.error('Failed to update event:', e);
+    res.status(500).json({ error: 'Failed to update event' });
   }
 });
 
@@ -682,6 +715,20 @@ app.get('/api/debug/seed', async (_req, res) => {
     res.json({ message: 'Seed debug done', lastError });
   } catch (e: any) {
     res.json({ error: e.message });
+  }
+});
+
+// ==================== PUSH NOTIFICATION ROUTES ====================
+
+app.post('/api/push-tokens/register', async (req, res) => {
+  try {
+    const { userId, token } = req.body;
+    if (!userId || !token) return res.status(400).json({ error: 'userId and token required' });
+    await database.registerPushToken(userId, token);
+    res.json({ registered: true });
+  } catch (e: any) {
+    console.error('Failed to register push token:', e);
+    res.status(500).json({ error: 'Failed to register push token' });
   }
 });
 

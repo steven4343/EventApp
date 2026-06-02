@@ -87,7 +87,8 @@ function DashboardScreen() {
   );
 }
 
-function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: () => void }) {
+function EventFormModal({ visible, onClose, onSaved, event }: { visible: boolean; onClose: () => void; onSaved: () => void; event?: any }) {
+  const isEdit = !!event;
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -99,6 +100,24 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
   const [imageUrl, setImageUrl] = useState('');
   const [imageData, setImageData] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (event) {
+      setTitle(event.title || '');
+      setDate(event.date || '');
+      setTime(event.time || '');
+      setLocation(event.location || '');
+      setCategory(event.category || '');
+      setDescription(event.description || '');
+      setPrice(String(event.price ?? ''));
+      setMaxCapacity(String(event.maxCapacity ?? ''));
+      setImageUrl('');
+      setImageData('');
+    } else {
+      setTitle(''); setDate(''); setTime(''); setLocation('');
+      setCategory(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl(''); setImageData('');
+    }
+  }, [event]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -138,37 +157,31 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
     }
   };
 
-  const finalImage = imageData || imageUrl || 'https://picsum.photos/seed/event/400';
+  const finalImage = imageData || imageUrl || (isEdit && event?.image ? event.image : 'https://picsum.photos/seed/event/400');
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!title || !date || !location) {
       Alert.alert('Error', 'Title, date, and location are required');
       return;
     }
     setSubmitting(true);
     try {
-      await adminApi.createEvent({
-        title,
-        date,
-        time: time || 'TBD',
-        location,
-        category: category || 'General',
-        description: description || '',
-        image: finalImage,
-        price: parseFloat(price) || 0,
-        attendees: 0,
-        maxCapacity: parseInt(maxCapacity) || 0,
-        rating: 0,
-        reviews: 0,
-        status: 'Draft',
-      });
-      Alert.alert('Success', 'Event created');
-      onCreated();
+      if (isEdit) {
+        const updates: any = { title, date, time: time || 'TBD', location, category: category || 'General', description: description || '', price: parseFloat(price) || 0, maxCapacity: parseInt(maxCapacity) || 0 };
+        if (finalImage && finalImage !== event.image) updates.image = finalImage;
+        await adminApi.updateEvent(event.id, updates);
+        Alert.alert('Success', 'Event updated');
+      } else {
+        await adminApi.createEvent({
+          title, date, time: time || 'TBD', location, category: category || 'General', description: description || '',
+          image: finalImage, price: parseFloat(price) || 0, attendees: 0, maxCapacity: parseInt(maxCapacity) || 0, rating: 0, reviews: 0, status: 'Draft',
+        });
+        Alert.alert('Success', 'Event created');
+      }
+      onSaved();
       onClose();
-      setTitle(''); setDate(''); setTime(''); setLocation('');
-      setCategory(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl(''); setImageData('');
     } catch (e) {
-      Alert.alert('Error', 'Failed to create event');
+      Alert.alert('Error', isEdit ? 'Failed to update event' : 'Failed to create event');
     } finally {
       setSubmitting(false);
     }
@@ -178,7 +191,7 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <ScrollView style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Create Event</Text>
+          <Text style={styles.modalTitle}>{isEdit ? 'Edit Event' : 'Create Event'}</Text>
           <TextInput style={styles.input} placeholder="Title *" value={title} onChangeText={setTitle} />
           <TextInput style={styles.input} placeholder="Date (YYYY-MM-DD) *" value={date} onChangeText={setDate} />
           <TextInput style={styles.input} placeholder="Time (e.g. 7:00 PM)" value={time} onChangeText={setTime} />
@@ -204,7 +217,7 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
           <TextInput style={[styles.input, styles.textArea]} placeholder="Description" value={description} onChangeText={setDescription} multiline />
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.submitButton} onPress={handleCreate} disabled={submitting}><Text style={styles.submitText}>{submitting ? 'Creating...' : 'Create Event'}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.submitButton} onPress={handleSave} disabled={submitting}><Text style={styles.submitText}>{submitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Event'}</Text></TouchableOpacity>
           </View>
         </ScrollView>
       </View>
@@ -215,7 +228,8 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
 function EventsManagementScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
   const [categoryFilter, setCategoryFilter] = useState('');
   const categories = ['', 'Academic', 'Cultural', 'Hackathon', 'Social', 'Sports'];
 
@@ -267,6 +281,21 @@ function EventsManagementScreen() {
     ]);
   };
 
+  const openCreate = () => {
+    setEditingEvent(null);
+    setShowForm(true);
+  };
+
+  const openEdit = (event: any) => {
+    setEditingEvent(event);
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingEvent(null);
+  };
+
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Published': return styles.statusPublished;
@@ -292,7 +321,7 @@ function EventsManagementScreen() {
             <Text style={styles.headerTitle}>Events</Text>
             <Text style={styles.headerSubtitle}>Create and manage events</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={() => setShowCreate(true)}>
+          <TouchableOpacity style={styles.addButton} onPress={openCreate}>
             <Text style={styles.addButtonText}>+ New</Text>
           </TouchableOpacity>
         </View>
@@ -326,6 +355,9 @@ function EventsManagementScreen() {
                 <Text style={[styles.itemStatus, getStatusStyle(event.status)]}>{event.status}</Text>
               </View>
               <View style={styles.itemActions}>
+                <TouchableOpacity style={styles.actionPublish} onPress={() => openEdit(event)}>
+                  <Text style={[styles.actionText, { color: '#2563eb' }]}>Edit</Text>
+                </TouchableOpacity>
                 {event.status !== 'Published' && (
                   <TouchableOpacity style={styles.actionPublish} onPress={() => handlePublish(event.id)}>
                     <Text style={styles.actionText}>Publish</Text>
@@ -345,7 +377,7 @@ function EventsManagementScreen() {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
-      <CreateEventModal visible={showCreate} onClose={() => setShowCreate(false)} onCreated={loadEvents} />
+      <EventFormModal visible={showForm} onClose={closeForm} onSaved={loadEvents} event={editingEvent} />
     </View>
   );
 }

@@ -42,3 +42,12 @@ export async function notifyNewEvent(title: string, eventTitle: string): Promise
     trigger: null,
   });
 }
+
+export async function getExpoPushToken(): Promise<string | null> {
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    return tokenData.data;
+  } catch {
+    return null;
+  }
+}
