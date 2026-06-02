@@ -255,6 +255,22 @@ app.get('/api/events', async (req, res) => {
   res.json(events);
 });
 
+app.get('/api/events/recent', async (req, res) => {
+  try {
+    const after = req.query.after as string;
+    if (!after) return res.status(400).json({ error: 'after query param required (ISO date)' });
+    const events = await database.getRecentEvents(after);
+    for (const event of events) {
+      const images = await database.getImagesByEntity('event', event.id);
+      if (images.length > 0) event.image = images[0].imageData;
+    }
+    res.json(events);
+  } catch (e: any) {
+    console.error('Failed to fetch recent events:', e);
+    res.status(500).json({ error: 'Failed to fetch recent events' });
+  }
+});
+
 app.get('/api/events/:id', async (req, res) => {
   const event = await database.getEventById(req.params.id);
   if (event) {

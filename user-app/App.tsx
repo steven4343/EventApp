@@ -3,7 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, AppState } from 'react-native';
+import { requestPermissions, getLastCheckTime, setLastCheckTime, notifyNewEvent } from './utils/notifications';
+import { userApi } from './api';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './components/screens/LoginScreen';
@@ -120,6 +122,7 @@ function AppContent() {
   const { user } = useAuth();
   const [ready, setReady] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -134,6 +137,31 @@ function AppContent() {
     const timer = setTimeout(() => setReady(true), 100);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!ready || !user) return;
+    requestPermissions();
+    const checkNewEvents = async () => {
+      try {
+        const lastCheck = await getLastCheckTime();
+        const now = new Date().toISOString();
+        const events = await userApi.getRecentEvents(lastCheck);
+        if (events.length > 0) {
+          for (const event of events) {
+            await notifyNewEvent('New Event Posted', event.title);
+          }
+        }
+        await setLastCheckTime(now);
+      } catch {
+        // silent
+      }
+    };
+    checkNewEvents();
+    pollingRef.current = setInterval(checkNewEvents, 60000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [ready, user]);
 
   const requireAuth = () => {
     if (!user) {

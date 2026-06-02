@@ -157,6 +157,12 @@ class UserApi {
     };
   }
 
+  async getRecentEvents(after: string): Promise<BackendEvent[]> {
+    const res = await fetch(`${BASE_URL}/events/recent?after=${encodeURIComponent(after)}`);
+    if (!res.ok) return [];
+    return res.json();
+  }
+
   async getClubsForScreen(): Promise<Club[]> {
     const backendClubs = await this.getClubs();
     return backendClubs.map(c => ({

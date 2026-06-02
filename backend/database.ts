@@ -70,6 +70,14 @@ class Database {
     return rows.map(mapEvent);
   }
 
+  async getRecentEvents(after: string): Promise<Event[]> {
+    const { rows } = await pool.query(
+      'SELECT * FROM events WHERE status = $1 AND created_at > $2 ORDER BY created_at DESC',
+      ['Published', after]
+    );
+    return rows.map(mapEvent);
+  }
+
   async getEventById(id: string): Promise<Event | undefined> {
     const { rows } = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
     return rows.length ? mapEvent(rows[0]) : undefined;
