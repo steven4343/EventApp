@@ -1,0 +1,12 @@
+{
+  "name": "cuz-events",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "start": "npm run -w backend start",
+    "dev": "npm run -w backend dev"
+  }
+}
