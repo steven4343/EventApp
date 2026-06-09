@@ -37,6 +37,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
     try {
       const idToken = await signInWithGoogle();
       if (!idToken) {
+        Alert.alert('Sign-In Cancelled', 'Google sign-in was cancelled or failed. Please try again.');
         setLoading(false);
         return;
       }
