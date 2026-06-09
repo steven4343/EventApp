@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { database } from './database';
 import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
-import { firebaseAuth } from './firebase';
+import { getFirebaseAuth } from './firebase';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -231,11 +231,12 @@ app.post('/auth/google', async (req, res) => {
       return res.status(400).json({ error: 'idToken is required' });
     }
 
-    if (!firebaseAuth) {
+    const auth = await getFirebaseAuth();
+    if (!auth) {
       return res.status(500).json({ error: 'Firebase is not configured on the server' });
     }
 
-    const decoded = await firebaseAuth.verifyIdToken(idToken);
+    const decoded = await auth.verifyIdToken(idToken);
     const { email, name, picture } = decoded;
 
     if (!email) {
