@@ -16,6 +16,8 @@ class Database {
     await pool.query(sql4);
     const sql5 = fs.readFileSync(path.join(__dirname, 'migrations', '005_google_auth.sql'), 'utf-8');
     await pool.query(sql5);
+    const sql6 = fs.readFileSync(path.join(__dirname, 'migrations', '006_published_at.sql'), 'utf-8');
+    await pool.query(sql6);
     console.log('Database initialized');
   }
 
