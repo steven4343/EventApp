@@ -109,7 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const googleSignIn = async (idToken: string): Promise<boolean> => {
     try {
+      console.log('googleSignIn: calling api with idToken');
       const data = await userApi.googleLogin(idToken);
+      console.log('googleSignIn: api returned', data);
       if (data && data.user) {
         const profile: UserProfile = {
           id: data.user.id,

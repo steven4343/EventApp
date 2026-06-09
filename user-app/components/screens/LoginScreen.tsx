@@ -36,14 +36,18 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      console.log('handleGoogleSignIn: starting');
       const idToken = await signInWithGoogle();
+      console.log('handleGoogleSignIn: got idToken', !!idToken);
       if (!idToken) {
         Alert.alert('Google Sign-In', 'Sign-in was cancelled or failed.');
         setLoading(false);
         return;
       }
       const success = await googleSignIn(idToken);
+      console.log('handleGoogleSignIn: googleSignIn success', success);
       if (success) {
+        console.log('handleGoogleSignIn: calling onCancel');
         onCancel?.();
       } else {
         Alert.alert('Error', 'Google sign-in failed. Please try again.');

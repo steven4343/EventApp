@@ -224,7 +224,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cuz-events-jwt-secret-dev';
 
 // ==================== GOOGLE AUTH (Firebase) ====================
 
-app.post('/auth/google', async (req, res) => {
+app.post('/api/auth/google', async (req, res) => {
   try {
     const { idToken } = req.body;
     if (!idToken) {
