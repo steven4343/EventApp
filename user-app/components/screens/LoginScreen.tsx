@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { signInWithGoogle, getGoogleRedirectResult } from '../../services/googleAuth';
+import { signInWithGoogle } from '../../services/googleAuth';
 
 interface LoginScreenProps {
   onCancel?: () => void;
@@ -24,14 +24,6 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
 
   const [showEmailForm, setShowEmailForm] = useState(false);
 
-  useEffect(() => {
-    getGoogleRedirectResult().then((idToken) => {
-      if (!idToken) return;
-      googleSignIn(idToken).then((success) => {
-        if (success) onCancel?.();
-      });
-    });
-  }, []);
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
