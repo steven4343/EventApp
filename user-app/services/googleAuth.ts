@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -13,18 +13,13 @@ const firebaseConfig = {
 initializeApp(firebaseConfig);
 const auth = getAuth();
 
-export function startGoogleSignIn() {
-  const provider = new GoogleAuthProvider();
-  signInWithRedirect(auth, provider);
-}
-
-export async function finishGoogleSignIn(): Promise<string | null> {
+export async function signInWithGoogle(): Promise<string | null> {
   try {
-    const result = await getRedirectResult(auth);
-    if (!result) return null;
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
     return await result.user.getIdToken();
   } catch (e) {
-    console.error('Google redirect error:', e);
+    console.error('Google sign-in error:', e);
     return null;
   }
 }
