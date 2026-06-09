@@ -355,8 +355,13 @@ app.post('/api/events', async (req, res) => {
     if (!event.title || !event.date || !event.location) {
       return res.status(400).json({ error: 'Title, date, and location are required' });
     }
+    const now = new Date().toISOString();
     event.id = `event_${uuidv4()}`;
-    event.createdAt = new Date().toISOString().split('T')[0];
+    event.createdAt = now.split('T')[0];
+    event.updatedAt = now;
+    if (event.status === 'Published') {
+      event.publishedAt = now;
+    }
     await database.addEvent(event);
     if (event.status === 'Published') {
       sendPushNotifications('New Event Posted', event.title);
@@ -393,6 +398,11 @@ app.put('/api/events/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const before = await database.getEventById(id);
+    const now = new Date().toISOString();
+    req.body.updatedAt = now;
+    if (before && before.status !== 'Published' && req.body.status === 'Published') {
+      req.body.publishedAt = now;
+    }
     await database.updateEvent(id, req.body);
     const event = await database.getEventById(id);
     if (event) {
