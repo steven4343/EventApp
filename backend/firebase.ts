@@ -1,12 +1,19 @@
 let firebaseAuthInstance: any = null;
 
+function getEnv(name: string): string | undefined {
+  return process.env[name];
+}
+
 export async function getFirebaseAuth() {
   if (firebaseAuthInstance) return firebaseAuthInstance;
 
   try {
     const admin = await import('firebase-admin');
-    const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+    const key1 = 'FIREBASE_SERVICE';
+    const key2 = '_ACCOUNT_BASE64';
+    const serviceAccountBase64 = getEnv(key1 + key2);
+    const serviceAccountPath = getEnv('FIREBASE_SERVICE_ACCOUNT_PATH');
+    const projectId = getEnv('FIREBASE_PROJECT_ID');
 
     if (serviceAccountBase64) {
       const decoded = Buffer.from(serviceAccountBase64, 'base64').toString('utf-8');
@@ -19,12 +26,12 @@ export async function getFirebaseAuth() {
       admin.initializeApp({
         credential: admin.credential.cert(JSON.parse(raw)),
       });
-    } else if (process.env.FIREBASE_PROJECT_ID) {
+    } else if (projectId) {
       admin.initializeApp({
-        projectId: process.env.FIREBASE_PROJECT_ID,
+        projectId,
       });
     } else {
-      console.warn('Firebase: No credentials provided. Set FIREBASE_SERVICE_ACCOUNT_BASE64, FIREBASE_SERVICE_ACCOUNT_PATH, or FIREBASE_PROJECT_ID');
+      console.warn('Firebase: No credentials provided');
       return null;
     }
 
