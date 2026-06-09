@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { signInWithGoogle } from '../../services/googleAuth';
+import { startGoogleSignIn, finishGoogleSignIn } from '../../services/googleAuth';
 
 interface LoginScreenProps {
   onCancel?: () => void;
@@ -24,6 +24,15 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
 
   const [showEmailForm, setShowEmailForm] = useState(false);
 
+  useEffect(() => {
+    finishGoogleSignIn().then((idToken) => {
+      if (!idToken) return;
+      googleSignIn(idToken).then((ok) => {
+        if (ok) onCancel?.();
+      });
+    });
+  }, []);
+
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,27 +42,8 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
   const [year, setYear] = useState('1');
   const [loading, setLoading] = useState(false);
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      const idToken = await signInWithGoogle();
-      if (!idToken) {
-        Alert.alert('Google Sign-In', 'Sign-in was cancelled or failed.');
-        setLoading(false);
-        return;
-      }
-      const success = await googleSignIn(idToken);
-      if (success) {
-        onCancel?.();
-      } else {
-        Alert.alert('Error', 'Google sign-in failed. Please try again.');
-      }
-    } catch (e) {
-      console.error('Google sign-in error:', e);
-      Alert.alert('Error', 'Failed to sign in with Google');
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogleSignIn = () => {
+    startGoogleSignIn();
   };
 
   const handleLogin = async () => {
