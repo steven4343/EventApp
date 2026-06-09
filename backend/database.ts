@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import pool from './db';
 import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
 
@@ -13,6 +14,8 @@ class Database {
     await pool.query(sql3);
     const sql4 = fs.readFileSync(path.join(__dirname, 'migrations', '004_push_tokens.sql'), 'utf-8');
     await pool.query(sql4);
+    const sql5 = fs.readFileSync(path.join(__dirname, 'migrations', '005_google_auth.sql'), 'utf-8');
+    await pool.query(sql5);
     console.log('Database initialized');
   }
 
@@ -38,10 +41,30 @@ class Database {
 
   async createUser(user: User): Promise<void> {
     await pool.query(
-      `INSERT INTO users (id, name, email, student_id, password, faculty, year, avatar, joined_at, is_active, role)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [user.id, user.name, user.email, user.studentId, user.password, user.faculty, user.year, user.avatar, user.joinedAt, user.isActive, user.role]
+      `INSERT INTO users (id, name, email, student_id, password, faculty, year, avatar, joined_at, is_active, role, provider, avatar_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [user.id, user.name, user.email, user.studentId, user.password, user.faculty, user.year, user.avatar, user.joinedAt, user.isActive, user.role, user.provider || null, user.avatarUrl || null]
     );
+  }
+
+  async createGoogleUser(email: string, name: string, photoURL: string): Promise<User> {
+    const user: User = {
+      id: `user_${uuidv4()}`,
+      name,
+      email,
+      studentId: '',
+      password: '',
+      faculty: '',
+      year: 1,
+      avatar: photoURL || 'https://picsum.photos/seed/user/200',
+      joinedAt: new Date().toISOString().split('T')[0],
+      isActive: true,
+      role: 'student',
+      provider: 'google',
+      avatarUrl: photoURL || '',
+    };
+    await this.createUser(user);
+    return user;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<void> {
@@ -346,6 +369,8 @@ function mapUser(row: any): User {
     joinedAt: row.joined_at,
     isActive: row.is_active,
     role: row.role,
+    provider: row.provider,
+    avatarUrl: row.avatar_url,
   };
 }
 
@@ -360,6 +385,8 @@ function mapUserUpdate(u: Partial<User>): Record<string, any> {
   if (u.avatar !== undefined) fields.avatar = u.avatar;
   if (u.isActive !== undefined) fields.is_active = u.isActive;
   if (u.role !== undefined) fields.role = u.role;
+  if (u.provider !== undefined) fields.provider = u.provider;
+  if (u.avatarUrl !== undefined) fields.avatar_url = u.avatarUrl;
   return fields;
 }
 

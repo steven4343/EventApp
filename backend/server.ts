@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { database } from './database';
 import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
+import { firebaseAuth } from './firebase';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -214,6 +216,70 @@ app.post('/api/users/login', async (req, res) => {
 
   user = await enrichUserAvatar(user);
   res.json({ user });
+});
+
+// ==================== JWT SECRET ====================
+
+const JWT_SECRET = process.env.JWT_SECRET || 'cuz-events-jwt-secret-dev';
+
+// ==================== GOOGLE AUTH (Firebase) ====================
+
+app.post('/auth/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ error: 'idToken is required' });
+    }
+
+    if (!firebaseAuth) {
+      return res.status(500).json({ error: 'Firebase is not configured on the server' });
+    }
+
+    const decoded = await firebaseAuth.verifyIdToken(idToken);
+    const { email, name, picture } = decoded;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required from Google account' });
+    }
+
+    let user = await database.getUserByEmail(email);
+
+    if (user) {
+      user.provider = 'google';
+      if (picture) {
+        user.avatarUrl = picture;
+        user.avatar = picture;
+      }
+    } else {
+      user = await database.createGoogleUser(email, name || email.split('@')[0], picture || '');
+    }
+
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        studentId: user.studentId,
+        faculty: user.faculty,
+        year: user.year,
+        avatar: user.avatar,
+        role: user.role,
+        provider: user.provider,
+      },
+    });
+  } catch (e: any) {
+    console.error('Google auth error:', e);
+    res.status(401).json({ error: 'Invalid or expired Firebase token' });
+  }
 });
 
 app.put('/api/users/:id', async (req, res) => {

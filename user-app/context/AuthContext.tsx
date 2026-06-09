@@ -18,6 +18,7 @@ interface AuthContextType {
   user: UserProfile | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (data: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number }) => Promise<boolean>;
+  googleSignIn: (idToken: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -106,6 +107,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const googleSignIn = async (idToken: string): Promise<boolean> => {
+    try {
+      const data = await userApi.googleLogin(idToken);
+      if (data && data.user) {
+        const profile: UserProfile = {
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          studentId: data.user.studentId,
+          faculty: data.user.faculty,
+          year: data.user.year,
+          avatar: data.user.avatar,
+        };
+        setUser(profile);
+        userApi.setCurrentUser(profile);
+        storeUser(profile);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Google sign-in error:', e);
+      return false;
+    }
+  };
+
   const logout = async (): Promise<void> => {
     setUser(null);
     storeUser(null);
@@ -146,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateProfile, changePassword }}>
+    <AuthContext.Provider value={{ user, login, register, googleSignIn, logout, updateProfile, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

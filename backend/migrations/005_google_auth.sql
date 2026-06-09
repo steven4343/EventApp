@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN provider VARCHAR(20);
+ALTER TABLE users ADD COLUMN avatar_url TEXT;

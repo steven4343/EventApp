@@ -98,6 +98,18 @@ class UserApi {
     return result.user || result;
   }
 
+  async googleLogin(idToken: string) {
+    const res = await fetch(`${BASE_URL}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    this.currentUser = data.user;
+    return data;
+  }
+
   async logout(): Promise<void> {
     this.currentUser = null;
   }

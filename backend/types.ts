@@ -10,6 +10,8 @@ export interface User {
   joinedAt: string;
   isActive: boolean;
   role: 'student' | 'admin';
+  provider?: string;
+  avatarUrl?: string;
 }
 
 export interface Event {

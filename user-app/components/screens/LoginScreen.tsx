@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,21 @@ import {
   Platform,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
+import { useGoogleSignIn } from '../../services/googleAuth';
 
 interface LoginScreenProps {
   onCancel?: () => void;
 }
 
 export function LoginScreen({ onCancel }: LoginScreenProps) {
-  const { login, register: authRegister } = useAuth();
+  const { login, register: authRegister, googleSignIn } = useAuth();
+  const { signInWithGoogle, isLoading: googleLoading } = useGoogleSignIn();
+
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,6 +32,28 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
   const [faculty, setFaculty] = useState('');
   const [year, setYear] = useState('1');
   const [loading, setLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      const idToken = await signInWithGoogle();
+      if (!idToken) {
+        setLoading(false);
+        return;
+      }
+      const success = await googleSignIn(idToken);
+      if (success) {
+        onCancel?.();
+      } else {
+        Alert.alert('Error', 'Google sign-in failed. Please try again.');
+      }
+    } catch (e) {
+      console.error('Google sign-in error:', e);
+      Alert.alert('Error', 'Failed to sign in with Google');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -76,6 +103,62 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
       setLoading(false);
     }
   };
+
+  if (!showEmailForm) {
+    return (
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <Text style={styles.logo}>🎓</Text>
+            <Text style={styles.title}>CUZ Events</Text>
+            <Text style={styles.subtitle}>Welcome to the campus hub</Text>
+          </View>
+
+          <View style={styles.form}>
+            <TouchableOpacity
+              style={[styles.googleButton, loading && styles.buttonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={loading || googleLoading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
+              ) : (
+                <Text style={styles.googleIcon}>G</Text>
+              )}
+              <Text style={styles.googleButtonText}>
+                {loading ? 'Signing in...' : 'Continue with Google'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.emailButton}
+              onPress={() => setShowEmailForm(true)}
+            >
+              <Text style={styles.emailButtonText}>Login with Email</Text>
+            </TouchableOpacity>
+
+            {onCancel && (
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={onCancel}
+              >
+                <Text style={styles.cancelText}>Continue as guest</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -178,14 +261,12 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
             </Text>
           </TouchableOpacity>
 
-          {onCancel && (
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={onCancel}
-            >
-              <Text style={styles.cancelText}>Continue as guest</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setShowEmailForm(false)}
+          >
+            <Text style={styles.backText}>Back to all sign-in options</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -230,6 +311,73 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  googleButton: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 8,
+  },
+  googleIcon: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#4285F4',
+    marginRight: 10,
+    backgroundColor: '#f1f5f9',
+    width: 28,
+    height: 28,
+    textAlign: 'center',
+    lineHeight: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  googleButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  emailButton: {
+    backgroundColor: '#2563eb',
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emailButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    alignItems: 'center',
+    marginTop: 12,
+    padding: 12,
+  },
+  cancelText: {
+    color: '#64748b',
+    fontSize: 15,
+    fontWeight: '500',
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
@@ -269,14 +417,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  cancelButton: {
+  backButton: {
     alignItems: 'center',
     marginTop: 12,
     padding: 12,
   },
-  cancelText: {
+  backText: {
     color: '#64748b',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
   },
 });
