@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { useGoogleSignIn } from '../../services/googleAuth';
+import { signInWithGoogle } from '../../services/googleAuth';
 
 interface LoginScreenProps {
   onCancel?: () => void;
@@ -21,7 +21,6 @@ interface LoginScreenProps {
 
 export function LoginScreen({ onCancel }: LoginScreenProps) {
   const { login, register: authRegister, googleSignIn } = useAuth();
-  const { signInWithGoogle, isLoading: googleLoading } = useGoogleSignIn();
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
@@ -38,6 +37,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
     try {
       const idToken = await signInWithGoogle();
       if (!idToken) {
+        Alert.alert('Google Sign-In', 'Sign-in was cancelled or failed.');
         setLoading(false);
         return;
       }
@@ -121,7 +121,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
             <TouchableOpacity
               style={[styles.googleButton, loading && styles.buttonDisabled]}
               onPress={handleGoogleSignIn}
-              disabled={loading || googleLoading}
+              disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
