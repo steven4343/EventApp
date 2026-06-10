@@ -3,12 +3,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, StyleSheet, AppState } from 'react-native';
+import { View, Text, StyleSheet, AppState, Platform } from 'react-native';
 import { requestPermissions, getExpoPushToken, getLastCheckTime, setLastCheckTime, notifyNewEvent } from './utils/notifications';
 import { userApi } from './api';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './components/screens/LoginScreen';
+import { onRedirectToken, checkRedirectResult } from './services/googleAuth';
 import { EventListScreen } from './components/screens/EventListScreen';
 import { EventDetailsScreen } from './components/screens/EventDetailsScreen';
 import { ProfileScreen } from './components/screens/ProfileScreen';
@@ -119,7 +120,7 @@ function HomeTabs({ requireAuth }: { requireAuth: () => void }) {
 }
 
 function AppContent() {
-  const { user } = useAuth();
+  const { user, googleSignIn } = useAuth();
   const [ready, setReady] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -134,6 +135,15 @@ function AppContent() {
   }, [user, ready]);
 
   useEffect(() => {
+    onRedirectToken(async (idToken) => {
+      const success = await googleSignIn(idToken);
+      if (success) {
+        setShowLogin(false);
+      }
+    });
+    if (Platform.OS === 'web') {
+      checkRedirectResult().catch(console.error);
+    }
     const timer = setTimeout(() => setReady(true), 100);
     return () => clearTimeout(timer);
   }, []);

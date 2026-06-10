@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'firebase/auth';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -12,6 +13,31 @@ const firebaseConfig = {
 
 initializeApp(firebaseConfig);
 const auth = getAuth();
+
+let pendingTokenCallback: ((token: string) => void) | null = null;
+
+export function onRedirectToken(callback: (token: string) => void) {
+  pendingTokenCallback = callback;
+}
+
+export async function checkRedirectResult(): Promise<void> {
+  if (Platform.OS !== 'web') return;
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      const idToken = await result.user.getIdToken();
+      pendingTokenCallback?.(idToken);
+      pendingTokenCallback = null;
+    }
+  } catch (e) {
+    console.error('Redirect result error:', e);
+  }
+}
+
+export function signInWithGoogleRedirect() {
+  const provider = new GoogleAuthProvider();
+  return signInWithRedirect(auth, provider);
+}
 
 export async function signInWithGoogle(): Promise<string | null> {
   try {
