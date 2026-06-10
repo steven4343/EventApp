@@ -1,31 +1,25 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'firebase/auth';
 import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-};
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
 
-initializeApp(firebaseConfig);
-const auth = getAuth();
-
+// Web: callback for when Google redirects back with id_token
 let pendingTokenCallback: ((token: string) => void) | null = null;
 
 export function onRedirectToken(callback: (token: string) => void) {
   pendingTokenCallback = callback;
 }
 
-export async function checkRedirectResult(): Promise<void> {
+export function checkRedirectResult(): void {
   if (Platform.OS !== 'web') return;
   try {
-    const result = await getRedirectResult(auth);
-    if (result) {
-      const idToken = await result.user.getIdToken();
+    const fragment = window.location.hash.replace('#', '');
+    if (!fragment) return;
+    const params = new URLSearchParams(fragment);
+    const idToken = params.get('id_token');
+    if (idToken) {
+      window.location.hash = '';
       pendingTokenCallback?.(idToken);
       pendingTokenCallback = null;
     }
@@ -34,16 +28,49 @@ export async function checkRedirectResult(): Promise<void> {
   }
 }
 
-export function signInWithGoogleRedirect() {
-  const provider = new GoogleAuthProvider();
-  return signInWithRedirect(auth, provider);
+// Web: full page redirect to Google OAuth (no Firebase SDK needed)
+export function signInWithGoogleRedirect(): void {
+  const redirectUri = window.location.origin + window.location.pathname;
+  const nonce = Array.from({ length: 32 }, () =>
+    Math.random().toString(36).charAt(2)
+  ).join('');
+
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    response_type: 'id_token',
+    redirect_uri: redirectUri,
+    scope: 'openid email profile',
+    nonce,
+  });
+
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
+// Native: open Google OAuth in browser and get id_token back
 export async function signInWithGoogle(): Promise<string | null> {
   try {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    return await result.user.getIdToken();
+    const nonce = Array.from({ length: 32 }, () =>
+      Math.random().toString(36).charAt(2)
+    ).join('');
+
+    const redirectUri = makeRedirectUri({ preferLocalhost: true });
+
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      response_type: 'id_token',
+      redirect_uri: redirectUri,
+      scope: 'openid email profile',
+      nonce,
+    });
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+    if (result.type === 'success' && result.url) {
+      const fragment = new URLSearchParams(result.url.split('#')[1] || '');
+      return fragment.get('id_token');
+    }
+    return null;
   } catch (e) {
     console.error('Google sign-in error:', e);
     return null;

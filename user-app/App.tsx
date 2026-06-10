@@ -142,7 +142,7 @@ function AppContent() {
       }
     });
     if (Platform.OS === 'web') {
-      checkRedirectResult().catch(console.error);
+      checkRedirectResult();
     }
     const timer = setTimeout(() => setReady(true), 100);
     return () => clearTimeout(timer);
