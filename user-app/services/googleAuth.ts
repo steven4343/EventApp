@@ -30,7 +30,7 @@ export function checkRedirectResult(): void {
 
 // Web: full page redirect to Google OAuth (no Firebase SDK needed)
 export function signInWithGoogleRedirect(): void {
-  const redirectUri = window.location.origin + window.location.pathname;
+  const redirectUri = window.location.origin;
   const nonce = Array.from({ length: 32 }, () =>
     Math.random().toString(36).charAt(2)
   ).join('');
