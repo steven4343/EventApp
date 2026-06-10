@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { database } from './database';
 import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
 import { getFirebaseAuth } from './firebase';
+import { OAuth2Client } from 'google-auth-library';
 import {
   generateToken,
   setTokenCookie,
@@ -298,13 +299,17 @@ app.post('/api/auth/google', async (req, res) => {
       return res.status(400).json({ error: 'idToken is required' });
     }
 
-    const auth = await getFirebaseAuth();
-    if (!auth) {
-      return res.status(500).json({ error: 'Firebase is not configured on the server' });
+    const client = new OAuth2Client();
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID || '700346203891-kpecio7217rlnudo7a246qo2jrvnuehk.apps.googleusercontent.com',
+    });
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid token payload' });
     }
 
-    const decoded = await auth.verifyIdToken(idToken);
-    const { email, name, picture } = decoded;
+    const { email, name, picture } = payload;
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required from Google account' });
@@ -326,7 +331,7 @@ app.post('/api/auth/google', async (req, res) => {
     res.json(result);
   } catch (e: any) {
     console.error('Google auth error:', e);
-    res.status(401).json({ error: 'Invalid or expired Firebase token' });
+    res.status(401).json({ error: 'Invalid or expired Google token' });
   }
 });
 
