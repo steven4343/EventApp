@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { signInWithGoogle, signInWithGoogleRedirect } from '../../services/googleAuth';
+import { signInWithGoogle } from '../../services/googleAuth';
 
 interface LoginScreenProps {
   onCancel?: () => void;
@@ -35,10 +35,6 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
-    if (Platform.OS === 'web') {
-      await signInWithGoogleRedirect();
-      return;
-    }
     setLoading(true);
     try {
       console.log('handleGoogleSignIn: starting');
