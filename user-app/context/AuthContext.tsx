@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadStoredUser = async () => {
     try {
+      await userApi.loadToken();
       const stored = await AsyncStorage.getItem(USER_STORAGE_KEY);
       if (stored) {
         const profile = JSON.parse(stored);
