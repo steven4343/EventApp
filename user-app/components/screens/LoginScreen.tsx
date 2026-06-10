@@ -10,11 +10,11 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
 import { signInWithGoogle, signInWithGoogleRedirect } from '../../services/googleAuth';
-import { Platform } from 'react-native';
 
 interface LoginScreenProps {
   onCancel?: () => void;
@@ -122,7 +122,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <Text style={styles.logo}>🎓</Text>
+            <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>CUZ Events</Text>
             <Text style={styles.subtitle}>Welcome to the campus hub</Text>
           </View>
@@ -176,12 +176,12 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.logo}>🎓</Text>
-          <Text style={styles.title}>CUZ Events</Text>
-          <Text style={styles.subtitle}>
-            {isRegister ? 'Create your account' : 'Welcome back'}
-          </Text>
+          <View style={styles.header}>
+            <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.title}>CUZ Events</Text>
+            <Text style={styles.subtitle}>
+              {isRegister ? 'Create your account' : 'Welcome back'}
+            </Text>
         </View>
 
         <View style={styles.form}>
@@ -298,7 +298,8 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    fontSize: 64,
+    width: 80,
+    height: 80,
     marginBottom: 16,
   },
   title: {
