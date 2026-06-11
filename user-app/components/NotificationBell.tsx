@@ -9,8 +9,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { getSocket } from '../services/socket';
+import { userApi } from '../api';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-production-9af6.up.railway.app/api';
+
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = userApi.getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
 
 interface Notification {
   id: string;
@@ -36,7 +44,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
     setLoading(true);
     try {
       const p = append ? page : 1;
-      const res = await fetch(`${API_URL}/notifications/${userId}?page=${p}&limit=10`);
+      const res = await fetch(`${API_URL}/notifications/${userId}?page=${p}&limit=10`, { headers: authHeaders() });
       const data = await res.json();
       if (append) {
         setNotifications(prev => [...prev, ...data.notifications]);
@@ -72,7 +80,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
     try {
       await fetch(`${API_URL}/notifications/${id}/read`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ userId }),
       });
       fetchNotifications();
@@ -83,7 +91,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
     try {
       await fetch(`${API_URL}/notifications/read-all`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ userId }),
       });
       fetchNotifications();

@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -11,6 +12,9 @@ import { AdminLoginScreen } from './components/screens/AdminLoginScreen';
 import NotificationBell from './components/NotificationBell';
 import { adminApi } from './api';
 import { connectSocket, disconnectSocket } from './services/socket';
+
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+const WARNING_BEFORE = 60 * 1000;
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -930,6 +934,38 @@ function AdminTabs({ admin, onLogout }: { admin: any; onLogout: () => void }) {
 export default function App() {
   const [admin, setAdmin] = useState<any>(null);
   const [ready, setReady] = useState(false);
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivity = useRef<number>(Date.now());
+
+  const clearTimers = () => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+  };
+
+  const doLogout = useCallback(() => {
+    clearTimers();
+    adminApi.logout();
+    setAdmin(null);
+    disconnectSocket();
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (!admin) return;
+    lastActivity.current = Date.now();
+    clearTimers();
+    warningTimer.current = setTimeout(() => {
+      Alert.alert(
+        'Session Expiring',
+        'Your session will expire in 1 minute due to inactivity.',
+        [{ text: 'OK' }]
+      );
+    }, SESSION_TIMEOUT_MS - WARNING_BEFORE);
+    inactivityTimer.current = setTimeout(() => {
+      doLogout();
+      Alert.alert('Session Expired', 'Please login again.');
+    }, SESSION_TIMEOUT_MS);
+  }, [admin, doLogout]);
 
   useEffect(() => {
     (async () => {
@@ -943,14 +979,35 @@ export default function App() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (admin) resetInactivityTimer();
+  }, [admin, resetInactivityTimer]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && admin) {
+        const elapsed = Date.now() - lastActivity.current;
+        if (elapsed >= SESSION_TIMEOUT_MS) {
+          doLogout();
+          Alert.alert('Session Expired', 'Your session has expired due to inactivity.');
+        } else {
+          resetInactivityTimer();
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [admin, resetInactivityTimer, doLogout]);
+
   const handleLogin = (loggedInAdmin: any) => {
     setAdmin(loggedInAdmin);
     if (loggedInAdmin?.id) {
       connectSocket(loggedInAdmin.id);
     }
+    resetInactivityTimer();
   };
 
   const handleLogout = () => {
+    clearTimers();
     adminApi.logout();
     setAdmin(null);
     disconnectSocket();

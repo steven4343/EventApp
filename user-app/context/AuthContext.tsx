@@ -1,9 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
+import { AppState, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userApi } from '../api';
 import { connectSocket, disconnectSocket } from '../services/socket';
 
 const USER_STORAGE_KEY = 'cuz_events_user';
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+const WARNING_BEFORE = 60 * 1000;
 
 export interface UserProfile {
   id: string;
@@ -28,6 +31,39 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivity = useRef<number>(Date.now());
+
+  const clearTimers = () => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+  };
+
+  const doLogout = useCallback(() => {
+    clearTimers();
+    setUser(null);
+    storeUser(null);
+    userApi.logout();
+    disconnectSocket();
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (!user) return;
+    lastActivity.current = Date.now();
+    clearTimers();
+    warningTimer.current = setTimeout(() => {
+      Alert.alert(
+        'Session Expiring',
+        'Your session will expire in 1 minute due to inactivity.',
+        [{ text: 'OK' }]
+      );
+    }, SESSION_TIMEOUT_MS - WARNING_BEFORE);
+    inactivityTimer.current = setTimeout(() => {
+      doLogout();
+      Alert.alert('Session Expired', 'Please login again.');
+    }, SESSION_TIMEOUT_MS);
+  }, [user, doLogout]);
 
   useEffect(() => {
     loadStoredUser();
@@ -36,13 +72,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) {
       connectSocket(user.id);
+      resetInactivityTimer();
     } else {
       disconnectSocket();
     }
-  }, [user]);
+  }, [user, resetInactivityTimer]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && user) {
+        const elapsed = Date.now() - lastActivity.current;
+        if (elapsed >= SESSION_TIMEOUT_MS) {
+          doLogout();
+          Alert.alert('Session Expired', 'Your session has expired due to inactivity.');
+        } else {
+          resetInactivityTimer();
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [user, resetInactivityTimer, doLogout]);
 
   const loadStoredUser = async () => {
     try {
+      await userApi.loadToken();
       const stored = await AsyncStorage.getItem(USER_STORAGE_KEY);
       if (stored) {
         const profile = JSON.parse(stored);
@@ -82,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(profile);
         userApi.setCurrentUser(profile);
         storeUser(profile);
+        resetInactivityTimer();
         return true;
       }
       return false;
@@ -105,7 +159,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar: apiUser.avatar,
         };
         setUser(profile);
+        userApi.setCurrentUser(profile);
         storeUser(profile);
+        resetInactivityTimer();
         return true;
       }
       return false;
@@ -116,9 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async (): Promise<void> => {
+    clearTimers();
     setUser(null);
     storeUser(null);
-    await userApi.logout();
+    userApi.logout();
+    disconnectSocket();
   };
 
   const updateProfile = async (data: Partial<UserProfile>): Promise<boolean> => {
