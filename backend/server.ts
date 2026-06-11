@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { database } from './database';
 import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image, Notification } from './types';
 import { initNotificationService, createNotification } from './notificationService';
+import { signToken, authMiddleware } from './auth';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -202,7 +203,9 @@ app.post('/api/users/register', async (req, res) => {
   };
 
   await database.createUser(newUser);
-  res.status(201).json({ user: newUser });
+
+  const token = signToken({ id: newUser.id, email: newUser.email, role: newUser.role });
+  res.status(201).json({ token, user: newUser });
 });
 
 app.post('/api/users/login', async (req, res) => {
@@ -218,10 +221,12 @@ app.post('/api/users/login', async (req, res) => {
   }
 
   user = await enrichUserAvatar(user);
-  res.json({ user });
+
+  const token = signToken({ id: user.id, email: user.email, role: user.role });
+  res.json({ token, user });
 });
 
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
 
@@ -271,7 +276,7 @@ app.get('/api/events/:id', async (req, res) => {
   }
 });
 
-app.post('/api/events', async (req, res) => {
+app.post('/api/events', authMiddleware, async (req, res) => {
   const event = req.body as Event;
   event.id = `event_${uuidv4()}`;
   event.createdAt = new Date().toISOString().split('T')[0];
@@ -299,7 +304,7 @@ app.post('/api/events', async (req, res) => {
   res.status(201).json(event);
 });
 
-app.put('/api/events/:id', async (req, res) => {
+app.put('/api/events/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
   await database.updateEvent(id, req.body);
   const event = await database.getEventById(id);
@@ -310,7 +315,7 @@ app.put('/api/events/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/events/:id', async (req, res) => {
+app.delete('/api/events/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
   const event = await database.getEventById(id);
   if (event) {
