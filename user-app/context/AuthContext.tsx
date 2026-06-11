@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userApi } from '../api';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 const USER_STORAGE_KEY = 'cuz_events_user';
 
@@ -31,6 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadStoredUser();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      connectSocket(user.id);
+    } else {
+      disconnectSocket();
+    }
+  }, [user]);
 
   const loadStoredUser = async () => {
     try {

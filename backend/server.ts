@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import http from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import { database } from './database';
-import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
+import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image, Notification } from './types';
+import { initNotificationService, createNotification } from './notificationService';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -150,7 +152,10 @@ async function seedImages() {
   }
 }
 
-app.listen(PORT, '0.0.0.0', async () => {
+const httpServer = http.createServer(app);
+initNotificationService(httpServer);
+
+httpServer.listen(PORT, '0.0.0.0', async () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   await seedDB();
 });
@@ -271,6 +276,26 @@ app.post('/api/events', async (req, res) => {
   event.id = `event_${uuidv4()}`;
   event.createdAt = new Date().toISOString().split('T')[0];
   await database.addEvent(event);
+
+  if (event.clubId && event.status === 'Published') {
+    const club = await database.getClubById(event.clubId);
+    if (club) {
+      const members = await database.getClubMembers(event.clubId);
+      for (const member of members) {
+        if (member.user_id !== event.createdBy) {
+          await createNotification(
+            member.user_id,
+            'New Event Posted',
+            `${club.name} posted a new event: ${event.title}`,
+            'event_update',
+            'event',
+            event.id,
+          );
+        }
+      }
+    }
+  }
+
   res.status(201).json(event);
 });
 
@@ -316,6 +341,19 @@ app.post('/api/clubs', async (req, res) => {
   };
   await database.addClub(club);
   res.status(201).json(club);
+});
+
+app.post('/api/clubs/:clubId/notify-all', async (req, res) => {
+  const { clubId } = req.params;
+  const { title, message, presidentId } = req.body;
+  if (!presidentId || !await requirePresident(presidentId, clubId)) {
+    return res.status(403).json({ error: 'Only club presidents can send notifications' });
+  }
+  const members = await database.getClubMembers(clubId);
+  for (const member of members) {
+    await createNotification(member.user_id, title, message, 'info', 'club', clubId);
+  }
+  res.json({ message: 'Notifications sent' });
 });
 
 app.delete('/api/clubs/:id', async (req, res) => {
@@ -381,6 +419,19 @@ app.post('/api/tickets', async (req, res) => {
   ticket.id = `ticket_${uuidv4()}`;
   ticket.purchasedAt = new Date().toISOString();
   await database.addTicket(ticket);
+
+  const event = await database.getEventById(ticket.eventId);
+  if (event) {
+    await createNotification(
+      ticket.userId,
+      'Ticket Confirmed',
+      `Your ticket for ${event.title} is confirmed!`,
+      'ticket_sold',
+      'event',
+      event.id,
+    );
+  }
+
   res.status(201).json(ticket);
 });
 
@@ -486,6 +537,27 @@ app.post('/api/user-clubs/request', async (req, res) => {
     joinedAt: new Date().toISOString(),
   };
   await database.addUserClub(userClub);
+
+  const club = await database.getClubById(clubId);
+  if (club) {
+    const members = await database.getClubMembers(clubId);
+    for (const member of members) {
+      if (member.role === 'President') {
+        try {
+          const user = await database.getUserById(userId);
+          await createNotification(
+            member.user_id,
+            'New Club Join Request',
+            `${user?.name || 'Someone'} wants to join ${club.name}`,
+            'club',
+            'club',
+            clubId,
+          );
+        } catch {}
+      }
+    }
+  }
+
   res.status(201).json(userClub);
 });
 
@@ -516,12 +588,39 @@ app.get('/api/clubs/:clubId/members/pending', async (req, res) => {
 app.put('/api/clubs/:clubId/members/:userId/approve', async (req, res) => {
   const { clubId, userId } = req.params;
   await database.approveClubMember(userId, clubId);
+
+  const club = await database.getClubById(clubId);
+  if (club) {
+    await createNotification(
+      userId,
+      'Club Membership Approved',
+      `You have been approved as a member of ${club.name}!`,
+      'success',
+      'club',
+      clubId,
+    );
+  }
+
   res.json({ message: 'Member approved' });
 });
 
 app.delete('/api/clubs/:clubId/members/:userId/reject', async (req, res) => {
   const { clubId, userId } = req.params;
+  const club = await database.getClubById(clubId);
+
   await database.removeUserClub(userId, clubId);
+
+  if (club) {
+    await createNotification(
+      userId,
+      'Club Membership Rejected',
+      `Your request to join ${club.name} was declined.`,
+      'error',
+      'club',
+      clubId,
+    );
+  }
+
   res.json({ message: 'Member rejected' });
 });
 
@@ -684,6 +783,31 @@ app.delete('/api/images/:entityType/:entityId', async (req, res) => {
   const { entityType, entityId } = req.params;
   await database.deleteImagesByEntity(entityType, entityId);
   res.json({ message: 'Images deleted' });
+});
+
+// ==================== NOTIFICATION ROUTES ====================
+
+app.get('/api/notifications/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const result = await database.getNotifications(userId, page, limit);
+  res.json(result);
+});
+
+app.patch('/api/notifications/:id/read', async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+  await database.markNotificationRead(id, userId);
+  res.json({ message: 'Notification marked as read' });
+});
+
+app.post('/api/notifications/read-all', async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+  await database.markAllNotificationsRead(userId);
+  res.json({ message: 'All notifications marked as read' });
 });
 
 // ==================== STATS ====================

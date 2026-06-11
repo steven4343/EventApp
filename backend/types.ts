@@ -85,6 +85,18 @@ export interface UserReview {
   createdAt: string;
 }
 
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'ticket_sold' | 'club' | 'event_update';
+  referenceType?: string;
+  referenceId?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface Image {
   id: string;
   entityType: 'event' | 'club' | 'user';

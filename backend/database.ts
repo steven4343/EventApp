@@ -1,5 +1,5 @@
 import pool from './db';
-import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
+import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image, Notification } from './types';
 
 class Database {
   async initialize(): Promise<void> {
@@ -298,6 +298,47 @@ class Database {
     return rows[0].admin_password === password;
   }
 
+  async createNotification(notification: Notification): Promise<void> {
+    await pool.query(
+      `INSERT INTO notifications (id, user_id, title, message, type, reference_type, reference_id, is_read, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [notification.id, notification.userId, notification.title, notification.message,
+       notification.type, notification.referenceType || null, notification.referenceId || null,
+       notification.isRead, notification.createdAt]
+    );
+  }
+
+  async getNotifications(userId: string, page: number = 1, limit: number = 20): Promise<{ notifications: Notification[], unreadCount: number }> {
+    const offset = (page - 1) * limit;
+    const { rows } = await pool.query(
+      `SELECT * FROM notifications WHERE user_id = $1
+       ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
+    const countResult = await pool.query(
+      'SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false',
+      [userId]
+    );
+    return {
+      notifications: rows.map(mapNotification),
+      unreadCount: parseInt(countResult.rows[0].count),
+    };
+  }
+
+  async markNotificationRead(id: string, userId: string): Promise<void> {
+    await pool.query(
+      'UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await pool.query(
+      'UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false',
+      [userId]
+    );
+  }
+
   async reset(): Promise<void> {
     await pool.query('DELETE FROM images');
     await pool.query('DELETE FROM user_reviews');
@@ -459,6 +500,20 @@ function mapUserReview(row: any): UserReview {
     itemType: row.item_type,
     rating: row.rating,
     comment: row.comment,
+    createdAt: row.created_at,
+  };
+}
+
+function mapNotification(row: any): Notification {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    title: row.title,
+    message: row.message,
+    type: row.type,
+    referenceType: row.reference_type,
+    referenceId: row.reference_id,
+    isRead: row.is_read,
     createdAt: row.created_at,
   };
 }

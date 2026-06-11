@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, StyleSheet } from 'react-native';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
+import NotificationBell from './components/NotificationBell';
 import { LoginScreen } from './components/screens/LoginScreen';
 import { EventListScreen } from './components/screens/EventListScreen';
 import { EventDetailsScreen } from './components/screens/EventDetailsScreen';
@@ -157,7 +158,14 @@ function AppContent() {
       {showLogin ? (
         <LoginScreen onCancel={() => setShowLogin(false)} />
       ) : (
-        <HomeTabs requireAuth={requireAuth} />
+        <View style={{ flex: 1 }}>
+          <HomeTabs requireAuth={requireAuth} />
+          {user && (
+            <View style={styles.notifFloating}>
+              <NotificationBell userId={user.id} />
+            </View>
+          )}
+        </View>
       )}
     </NavigationContainer>
   );
@@ -182,6 +190,12 @@ const styles = StyleSheet.create({
   },
   tabIcon: {
     fontSize: 20,
+  },
+  notifFloating: {
+    position: 'absolute',
+    top: 50,
+    right: 8,
+    zIndex: 100,
   },
 
 });

@@ -8,7 +8,9 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, Tex
 import * as ImagePicker from 'expo-image-picker';
 
 import { AdminLoginScreen } from './components/screens/AdminLoginScreen';
+import NotificationBell from './components/NotificationBell';
 import { adminApi } from './api';
+import { connectSocket, disconnectSocket } from './services/socket';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -935,6 +937,7 @@ export default function App() {
       const currentAdmin = adminApi.getCurrentAdmin();
       if (currentAdmin) {
         setAdmin(currentAdmin);
+        if (currentAdmin.id) connectSocket(currentAdmin.id);
       }
       setReady(true);
     })();
@@ -942,11 +945,15 @@ export default function App() {
 
   const handleLogin = (loggedInAdmin: any) => {
     setAdmin(loggedInAdmin);
+    if (loggedInAdmin?.id) {
+      connectSocket(loggedInAdmin.id);
+    }
   };
 
   const handleLogout = () => {
     adminApi.logout();
     setAdmin(null);
+    disconnectSocket();
   };
 
   if (!ready) {
@@ -962,7 +969,12 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="auto" />
         {admin ? (
-          <AdminTabs admin={admin} onLogout={handleLogout} />
+          <View style={{ flex: 1 }}>
+            <AdminTabs admin={admin} onLogout={handleLogout} />
+            <View style={styles.notifFloating}>
+              <NotificationBell userId={admin.id} />
+            </View>
+          </View>
         ) : (
           <AdminLoginScreen onLogin={handleLogin} />
         )}
@@ -1447,5 +1459,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     overflow: 'hidden',
+  },
+  notifFloating: {
+    position: 'absolute',
+    top: 50,
+    right: 8,
+    zIndex: 100,
   },
 });
