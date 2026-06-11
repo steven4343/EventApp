@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { useGoogleSignIn } from '../../services/googleAuth';
+import { signInWithGoogle } from '../../services/googleAuth';
 
 interface LoginScreenProps {
   onCancel?: () => void;
@@ -21,9 +22,9 @@ interface LoginScreenProps {
 
 export function LoginScreen({ onCancel }: LoginScreenProps) {
   const { login, register: authRegister, googleSignIn } = useAuth();
-  const { signInWithGoogle, isLoading: googleLoading } = useGoogleSignIn();
 
   const [showEmailForm, setShowEmailForm] = useState(false);
+
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,13 +37,18 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      console.log('handleGoogleSignIn: starting');
       const idToken = await signInWithGoogle();
+      console.log('handleGoogleSignIn: got idToken', !!idToken);
       if (!idToken) {
+        Alert.alert('Google Sign-In', 'Sign-in was cancelled or failed.');
         setLoading(false);
         return;
       }
       const success = await googleSignIn(idToken);
+      console.log('handleGoogleSignIn: googleSignIn success', success);
       if (success) {
+        console.log('handleGoogleSignIn: calling onCancel');
         onCancel?.();
       } else {
         Alert.alert('Error', 'Google sign-in failed. Please try again.');
@@ -112,7 +118,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <Text style={styles.logo}>🎓</Text>
+            <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>CUZ Events</Text>
             <Text style={styles.subtitle}>Welcome to the campus hub</Text>
           </View>
@@ -121,7 +127,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
             <TouchableOpacity
               style={[styles.googleButton, loading && styles.buttonDisabled]}
               onPress={handleGoogleSignIn}
-              disabled={loading || googleLoading}
+              disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
@@ -166,12 +172,12 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.logo}>🎓</Text>
-          <Text style={styles.title}>CUZ Events</Text>
-          <Text style={styles.subtitle}>
-            {isRegister ? 'Create your account' : 'Welcome back'}
-          </Text>
+          <View style={styles.header}>
+            <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.title}>CUZ Events</Text>
+            <Text style={styles.subtitle}>
+              {isRegister ? 'Create your account' : 'Welcome back'}
+            </Text>
         </View>
 
         <View style={styles.form}>
@@ -288,7 +294,8 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    fontSize: 64,
+    width: 80,
+    height: 80,
     marginBottom: 16,
   },
   title: {

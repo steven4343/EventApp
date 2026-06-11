@@ -32,6 +32,8 @@ export interface Event {
   status: 'Published' | 'Draft' | 'Cancelled';
   createdAt: string;
   createdBy: string;
+  updatedAt?: string;
+  publishedAt?: string;
 }
 
 export interface Club {

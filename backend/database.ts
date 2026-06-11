@@ -16,6 +16,8 @@ class Database {
     await pool.query(sql4);
     const sql5 = fs.readFileSync(path.join(__dirname, 'migrations', '005_google_auth.sql'), 'utf-8');
     await pool.query(sql5);
+    const sql6 = fs.readFileSync(path.join(__dirname, 'migrations', '006_published_at.sql'), 'utf-8');
+    await pool.query(sql6);
     console.log('Database initialized');
   }
 
@@ -97,7 +99,7 @@ class Database {
 
   async getRecentEvents(after: string): Promise<Event[]> {
     const { rows } = await pool.query(
-      'SELECT * FROM events WHERE status = $1 AND created_at > $2 ORDER BY created_at DESC',
+      `SELECT * FROM events WHERE status = $1 AND COALESCE(published_at, created_at) > $2 ORDER BY COALESCE(published_at, created_at) DESC`,
       ['Published', after]
     );
     return rows.map(mapEvent);
@@ -110,9 +112,9 @@ class Database {
 
   async addEvent(event: Event): Promise<void> {
     await pool.query(
-      `INSERT INTO events (id, title, date, time, location, category, club_id, description, image, price, attendees, max_capacity, rating, reviews, status, created_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-      [event.id, event.title, event.date, event.time, event.location, event.category, event.clubId, event.description, event.image, event.price, event.attendees, event.maxCapacity, event.rating, event.reviews, event.status, event.createdAt, event.createdBy]
+      `INSERT INTO events (id, title, date, time, location, category, club_id, description, image, price, attendees, max_capacity, rating, reviews, status, created_at, created_by, updated_at, published_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+      [event.id, event.title, event.date, event.time, event.location, event.category, event.clubId, event.description, event.image, event.price, event.attendees, event.maxCapacity, event.rating, event.reviews, event.status, event.createdAt, event.createdBy, event.updatedAt, event.publishedAt]
     );
   }
 
@@ -409,6 +411,8 @@ function mapEvent(row: any): Event {
     status: row.status,
     createdAt: row.created_at,
     createdBy: row.created_by,
+    updatedAt: row.updated_at,
+    publishedAt: row.published_at,
   };
 }
 
@@ -429,6 +433,8 @@ function mapEventUpdate(e: Partial<Event>): Record<string, any> {
   if (e.reviews !== undefined) fields.reviews = e.reviews;
   if (e.status !== undefined) fields.status = e.status;
   if (e.createdBy !== undefined) fields.created_by = e.createdBy;
+  if (e.updatedAt !== undefined) fields.updated_at = e.updatedAt;
+  if (e.publishedAt !== undefined) fields.published_at = e.publishedAt;
   return fields;
 }
 

@@ -1,22 +1,35 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { database } from './database';
 import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
 import { getFirebaseAuth } from './firebase';
+import { OAuth2Client } from 'google-auth-library';
+import {
+  generateToken,
+  setTokenCookie,
+  clearTokenCookie,
+  authenticate,
+  optionalAuth,
+} from './auth';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
-app.use(cors());
+const JWT_SECRET = process.env.JWT_SECRET || 'cuz-events-jwt-secret-dev';
+
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
 app.use(express.json({ limit: '50mb' }));
+app.use(cookieParser());
 app.use('/images', express.static('public/images'));
 
-// Initialize database
 database.initialize().catch(console.error);
 
-// Seed in background after server starts
 async function seedDB() {
   try {
     const existingClubs = await database.getClubs();
@@ -65,7 +78,6 @@ async function seedImages() {
   try {
     const fs = require('fs');
     const path = require('path');
-    const { v4: uuidv4 } = require('uuid');
 
     const imagesDir = path.join(__dirname, 'public', 'images');
     if (!fs.existsSync(imagesDir)) return;
@@ -82,20 +94,16 @@ async function seedImages() {
       return `data:${mime};base64,${base64}`;
     }
 
-    // Manual mapping: hash filename -> event_id (from mvp project's mock data)
     const eventImageMap: Record<string, string[]> = {
-      '7903ba759388609c8cc053af8ae8dc4c60a50dd0.png': ['event_1'],      // Mr & Miss Cavendish
-      'd7ae4b74561b5c62377c6e8e1ada58ad3e80fef4.png': ['event_2', 'event_3', 'event_5'], // Fresher's Bash, Intl Welcome, Career Expo
-      'entrenuer ship.jpg': ['event_7'], // Entrepreneurship Summit
-      '9740598005f689306f597b4d692dc46014798202.png': ['event_4'],      // Cultural Day Festival
-      '6356727368ab75ac3f4eea867fb27bcc7ccd9258.png': ['event_6'],      // ZUSA Games
-      'ed7bfb12660b2fe3e71ec2eb1a6f020bb7f683fa.png': ['event_8'],      // Medical Faculty Guest Lecture
-      'dfe3dd58b825e2385a751187d0e16cf5736a02da.png': ['event_3'],      // International Students Welcome (was unused in mvp)
+      '7903ba759388609c8cc053af8ae8dc4c60a50dd0.png': ['event_1'],
+      'd7ae4b74561b5c62377c6e8e1ada58ad3e80fef4.png': ['event_2', 'event_3', 'event_5'],
+      '9740598005f689306c597b4d692dc46014798202.png': ['event_4'],
+      '6356727368ab75ac3f4eea867fb27bcc7ccd9258.png': ['event_6'],
+      'ed7bfb12660b2fe3e71ec2eb1a6f020bb7f683fa.png': ['event_8'],
+      'dfe3dd58b825e2385a751187d0e16cf5736a02da.png': ['event_3'],
       'dev3pack_logo.jpg': ['event_dev3pack_hackathon'],
-      'colour-run.jpg': ['event_colour_run'],
     };
 
-    // Manual mapping: filename -> club_id
     const clubImageMap: Record<string, string> = {
       'chess.jpg': 'club_9',
       'CUZITA Club.jpeg': 'club_10',
@@ -110,11 +118,8 @@ async function seedImages() {
       if (skipFiles.includes(file)) continue;
       const filePath = path.join(imagesDir, file);
       if (!fs.statSync(filePath).isFile()) continue;
-
       const dataUri = fileToDataUri(filePath);
       if (!dataUri) continue;
-
-      // Check event mapping first
       const eventIds = eventImageMap[file];
       if (eventIds) {
         for (const eventId of eventIds) {
@@ -130,8 +135,6 @@ async function seedImages() {
         }
         continue;
       }
-
-      // Check club mapping
       const clubId = clubImageMap[file];
       if (clubId) {
         await database.deleteImagesByEntity('club', clubId);
@@ -157,7 +160,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   await seedDB();
 });
 
-// ==================== USER ROUTES ====================
+// ==================== HELPERS ====================
 
 async function enrichUserAvatar(user: User | undefined): Promise<User | undefined> {
   if (!user) return user;
@@ -165,6 +168,40 @@ async function enrichUserAvatar(user: User | undefined): Promise<User | undefine
   if (images.length > 0) user.avatar = images[0].imageData;
   return user;
 }
+
+function issueTokenResponse(user: User, res: express.Response) {
+  const tokenPayload = { id: user.id, email: user.email, role: user.role };
+  const token = generateToken(tokenPayload);
+  setTokenCookie(res, token);
+  return {
+    token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      studentId: user.studentId,
+      faculty: user.faculty,
+      year: user.year,
+      avatar: user.avatar,
+      role: user.role,
+    },
+  };
+}
+
+function sanitizeUser(user: User) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    studentId: user.studentId,
+    faculty: user.faculty,
+    year: user.year,
+    avatar: user.avatar,
+    role: user.role,
+  };
+}
+
+// ==================== USER ROUTES ====================
 
 app.get('/api/users', async (_req, res) => {
   let users = await database.getUsers();
@@ -199,7 +236,35 @@ app.post('/api/users/register', async (req, res) => {
   };
 
   await database.createUser(newUser);
-  res.status(201).json({ user: newUser });
+  const result = issueTokenResponse(newUser, res);
+  res.status(201).json(result);
+});
+
+app.post('/api/seed/admin', async (req, res) => {
+  const { email, password, name, secret } = req.body;
+  if (secret !== (process.env.SEED_KEY || 'cuz-admin-seed-2024')) {
+    return res.status(403).json({ error: 'Invalid seed key' });
+  }
+  const existing = await database.getUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ error: 'Email already registered' });
+  }
+  const adminUser: User = {
+    id: `user_${uuidv4()}`,
+    name: name || 'Admin',
+    email,
+    password,
+    studentId: '',
+    faculty: 'Administration',
+    year: 0,
+    avatar: 'https://picsum.photos/seed/admin/200',
+    joinedAt: new Date().toISOString().split('T')[0],
+    isActive: true,
+    role: 'admin',
+  };
+  await database.createUser(adminUser);
+  const result = issueTokenResponse(adminUser, res);
+  res.status(201).json(result);
 });
 
 app.post('/api/users/login', async (req, res) => {
@@ -215,76 +280,18 @@ app.post('/api/users/login', async (req, res) => {
   }
 
   user = await enrichUserAvatar(user);
-  res.json({ user });
-});
-
-// ==================== JWT SECRET ====================
-
-const JWT_SECRET = process.env.JWT_SECRET || 'cuz-events-jwt-secret-dev';
-
-// ==================== GOOGLE AUTH (Firebase) ====================
-
-app.post('/auth/google', async (req, res) => {
-  try {
-    const { idToken } = req.body;
-    if (!idToken) {
-      return res.status(400).json({ error: 'idToken is required' });
-    }
-
-    const auth = await getFirebaseAuth();
-    if (!auth) {
-      return res.status(500).json({ error: 'Firebase is not configured on the server' });
-    }
-
-    const decoded = await auth.verifyIdToken(idToken);
-    const { email, name, picture } = decoded;
-
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required from Google account' });
-    }
-
-    let user = await database.getUserByEmail(email);
-
-    if (user) {
-      user.provider = 'google';
-      if (picture) {
-        user.avatarUrl = picture;
-        user.avatar = picture;
-      }
-    } else {
-      user = await database.createGoogleUser(email, name || email.split('@')[0], picture || '');
-    }
-
-    const tokenPayload = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        studentId: user.studentId,
-        faculty: user.faculty,
-        year: user.year,
-        avatar: user.avatar,
-        role: user.role,
-        provider: user.provider,
-      },
-    });
-  } catch (e: any) {
-    console.error('Google auth error:', e);
-    res.status(401).json({ error: 'Invalid or expired Firebase token' });
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
   }
+  const result = issueTokenResponse(user, res);
+  res.json(result);
 });
 
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', authenticate, async (req, res) => {
   const { id } = req.params;
+  if (req.user!.id !== id) {
+    return res.status(403).json({ error: 'Cannot modify another user\'s profile' });
+  }
   const updates = req.body;
 
   if (updates.avatar && updates.avatar.startsWith('data:')) {
@@ -304,10 +311,60 @@ app.put('/api/users/:id', async (req, res) => {
   let updated = await database.getUserById(id);
   updated = await enrichUserAvatar(updated);
   if (updated) {
-    res.json({ user: updated });
+    res.json({ user: sanitizeUser(updated) });
   } else {
     res.status(404).json({ error: 'User not found' });
   }
+});
+
+// ==================== AUTH ROUTES ====================
+
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ error: 'idToken is required' });
+    }
+
+    const client = new OAuth2Client();
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID || '700346203891-kpecio7217rlnudo7a246qo2jrvnuehk.apps.googleusercontent.com',
+    });
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid token payload' });
+    }
+
+    const { email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required from Google account' });
+    }
+
+    let user = await database.getUserByEmail(email);
+
+    if (user) {
+      user.provider = 'google';
+      if (picture) {
+        user.avatarUrl = picture;
+        user.avatar = picture;
+      }
+    } else {
+      user = await database.createGoogleUser(email, name || email.split('@')[0], picture || '');
+    }
+
+    const result = issueTokenResponse(user, res);
+    res.json(result);
+  } catch (e: any) {
+    console.error('Google auth error:', e);
+    res.status(401).json({ error: 'Invalid or expired Google token' });
+  }
+});
+
+app.post('/api/auth/logout', (_req, res) => {
+  clearTokenCookie(res);
+  res.json({ message: 'Logged out' });
 });
 
 // ==================== EVENT ROUTES ====================
@@ -349,14 +406,20 @@ app.get('/api/events/:id', async (req, res) => {
   }
 });
 
-app.post('/api/events', async (req, res) => {
+app.post('/api/events', authenticate, async (req, res) => {
   try {
     const event = req.body as Event;
     if (!event.title || !event.date || !event.location) {
       return res.status(400).json({ error: 'Title, date, and location are required' });
     }
+    const now = new Date().toISOString();
     event.id = `event_${uuidv4()}`;
-    event.createdAt = new Date().toISOString().split('T')[0];
+    event.createdBy = req.user!.id;
+    event.createdAt = now.split('T')[0];
+    event.updatedAt = now;
+    if (event.status === 'Published') {
+      event.publishedAt = now;
+    }
     await database.addEvent(event);
     if (event.status === 'Published') {
       sendPushNotifications('New Event Posted', event.title);
@@ -389,14 +452,20 @@ async function sendPushNotifications(title: string, body: string): Promise<void>
   }
 }
 
-app.put('/api/events/:id', async (req, res) => {
+app.put('/api/events/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const before = await database.getEventById(id);
+    if (!before) return res.status(404).json({ error: 'Event not found' });
+    const now = new Date().toISOString();
+    req.body.updatedAt = now;
+    if (before.status !== 'Published' && req.body.status === 'Published') {
+      req.body.publishedAt = now;
+    }
     await database.updateEvent(id, req.body);
     const event = await database.getEventById(id);
     if (event) {
-      if ((!before || before.status !== 'Published') && event.status === 'Published') {
+      if (before.status !== 'Published' && event.status === 'Published') {
         sendPushNotifications('New Event Posted', event.title);
       }
       res.json(event);
@@ -409,7 +478,7 @@ app.put('/api/events/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/events/:id', async (req, res) => {
+app.delete('/api/events/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   const event = await database.getEventById(id);
   if (event) {
@@ -432,7 +501,7 @@ app.get('/api/clubs', async (req, res) => {
   res.json(clubs);
 });
 
-app.post('/api/clubs', async (req, res) => {
+app.post('/api/clubs', authenticate, async (req, res) => {
   try {
     const club: Club = {
       ...req.body,
@@ -447,7 +516,7 @@ app.post('/api/clubs', async (req, res) => {
   }
 });
 
-app.delete('/api/clubs/:id', async (req, res) => {
+app.delete('/api/clubs/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   const club = await database.getClubById(id);
   if (club) {
@@ -469,14 +538,11 @@ app.get('/api/clubs/:id', async (req, res) => {
   }
 });
 
-app.put('/api/clubs/:id', async (req, res) => {
+app.put('/api/clubs/:id', authenticate, async (req, res) => {
   const { id } = req.params;
-  const { presidentId } = req.query;
-
-  if (presidentId && !await requirePresident(presidentId as string, id)) {
+  if (!await requirePresident(req.user!.id, id)) {
     return res.status(403).json({ error: 'Only club presidents can update the club' });
   }
-
   await database.updateClub(id, req.body);
   const club = await database.getClubById(id);
   if (club) {
@@ -500,15 +566,27 @@ app.post('/api/clubs/:clubId/verify-admin', async (req, res) => {
 
 // ==================== TICKET ROUTES ====================
 
-app.get('/api/tickets/:userId', async (req, res) => {
-  const tickets = await database.getTicketsByUser(req.params.userId);
+app.get('/api/tickets/me', authenticate, async (req, res) => {
+  const tickets = await database.getTicketsByUser(req.user!.id);
   res.json(tickets);
 });
 
-app.post('/api/tickets', async (req, res) => {
-  const ticket = req.body as Ticket;
-  ticket.id = `ticket_${uuidv4()}`;
-  ticket.purchasedAt = new Date().toISOString();
+// Legacy route (kept for backward compatibility, validates userId matches token)
+app.get('/api/tickets/:userId', authenticate, async (req, res) => {
+  if (req.user!.id !== req.params.userId) {
+    return res.status(403).json({ error: 'Cannot view another user\'s tickets' });
+  }
+  const tickets = await database.getTicketsByUser(req.user!.id);
+  res.json(tickets);
+});
+
+app.post('/api/tickets', authenticate, async (req, res) => {
+  const ticket: Ticket = {
+    ...req.body,
+    userId: req.user!.id,
+    id: `ticket_${uuidv4()}`,
+    purchasedAt: new Date().toISOString(),
+  };
   await database.addTicket(ticket);
   res.status(201).json(ticket);
 });
@@ -534,13 +612,13 @@ app.get('/api/tickets', async (req, res) => {
   res.json(filtered);
 });
 
-app.put('/api/tickets/:id/verify', async (req, res) => {
+app.put('/api/tickets/:id/verify', authenticate, async (req, res) => {
   const { id } = req.params;
   await database.updateTicketStatus(id, 'verified');
   res.json({ message: 'Ticket verified' });
 });
 
-app.put('/api/tickets/:id/reject', async (req, res) => {
+app.put('/api/tickets/:id/reject', authenticate, async (req, res) => {
   const { id } = req.params;
   await database.updateTicketStatus(id, 'rejected');
   res.json({ message: 'Ticket rejected' });
@@ -548,8 +626,8 @@ app.put('/api/tickets/:id/reject', async (req, res) => {
 
 // ==================== SAVED EVENTS ROUTES ====================
 
-app.get('/api/saved/:userId', async (req, res) => {
-  const saved = await database.getSavedByUser(req.params.userId);
+app.get('/api/saved/me', authenticate, async (req, res) => {
+  const saved = await database.getSavedByUser(req.user!.id);
   const savedWithEvents = await Promise.all(
     saved.map(async (s) => {
       const event = await database.getEventById(s.eventId);
@@ -559,9 +637,24 @@ app.get('/api/saved/:userId', async (req, res) => {
   res.json(savedWithEvents);
 });
 
-app.post('/api/saved', async (req, res) => {
+app.get('/api/saved/:userId', authenticate, async (req, res) => {
+  if (req.user!.id !== req.params.userId) {
+    return res.status(403).json({ error: 'Cannot view another user\'s saved events' });
+  }
+  const saved = await database.getSavedByUser(req.user!.id);
+  const savedWithEvents = await Promise.all(
+    saved.map(async (s) => {
+      const event = await database.getEventById(s.eventId);
+      return { ...s, ...(event || {}) };
+    })
+  );
+  res.json(savedWithEvents);
+});
+
+app.post('/api/saved', authenticate, async (req, res) => {
   const saved: SavedEvent = {
     ...req.body,
+    userId: req.user!.id,
     id: `saved_${uuidv4()}`,
     savedAt: new Date().toISOString(),
   };
@@ -569,16 +662,19 @@ app.post('/api/saved', async (req, res) => {
   res.status(201).json(saved);
 });
 
-app.delete('/api/saved/:userId/:eventId', async (req, res) => {
+app.delete('/api/saved/:userId/:eventId', authenticate, async (req, res) => {
   const { userId, eventId } = req.params;
+  if (req.user!.id !== userId) {
+    return res.status(403).json({ error: 'Cannot modify another user\'s saved events' });
+  }
   await database.removeSaved(userId, eventId);
   res.json({ message: 'Saved event removed' });
 });
 
 // ==================== USER CLUBS ROUTES ====================
 
-app.get('/api/user-clubs/:userId', async (req, res) => {
-  const userClubs = await database.getUserClubs(req.params.userId);
+app.get('/api/user-clubs/me', authenticate, async (req, res) => {
+  const userClubs = await database.getUserClubs(req.user!.id);
   const clubsWithDetails = await Promise.all(
     userClubs.map(async (uc) => {
       const club = await database.getClubById(uc.clubId);
@@ -588,8 +684,25 @@ app.get('/api/user-clubs/:userId', async (req, res) => {
   res.json(clubsWithDetails);
 });
 
-app.get('/api/user-clubs/:userId/:clubId', async (req, res) => {
+app.get('/api/user-clubs/:userId', authenticate, async (req, res) => {
+  if (req.user!.id !== req.params.userId) {
+    return res.status(403).json({ error: 'Cannot view another user\'s clubs' });
+  }
+  const userClubs = await database.getUserClubs(req.user!.id);
+  const clubsWithDetails = await Promise.all(
+    userClubs.map(async (uc) => {
+      const club = await database.getClubById(uc.clubId);
+      return { ...uc, ...(club || {}) };
+    })
+  );
+  res.json(clubsWithDetails);
+});
+
+app.get('/api/user-clubs/:userId/:clubId', authenticate, async (req, res) => {
   const { userId, clubId } = req.params;
+  if (req.user!.id !== userId) {
+    return res.status(403).json({ error: 'Cannot view another user\'s membership' });
+  }
   const membership = await database.getUserClub(userId, clubId);
   if (membership) {
     res.json(membership);
@@ -598,10 +711,11 @@ app.get('/api/user-clubs/:userId/:clubId', async (req, res) => {
   }
 });
 
-app.post('/api/user-clubs/request', async (req, res) => {
-  const { userId, clubId } = req.body;
-  if (!userId || !clubId) {
-    return res.status(400).json({ error: 'userId and clubId required' });
+app.post('/api/user-clubs/request', authenticate, async (req, res) => {
+  const { clubId } = req.body;
+  const userId = req.user!.id;
+  if (!clubId) {
+    return res.status(400).json({ error: 'clubId required' });
   }
   const existing = await database.getUserClub(userId, clubId);
   if (existing) {
@@ -618,9 +732,10 @@ app.post('/api/user-clubs/request', async (req, res) => {
   res.status(201).json(userClub);
 });
 
-app.post('/api/user-clubs', async (req, res) => {
+app.post('/api/user-clubs', authenticate, async (req, res) => {
   const userClub: UserClub = {
     ...req.body,
+    userId: req.user!.id,
     id: `uc_${uuidv4()}`,
     joinedAt: new Date().toISOString(),
   };
@@ -628,8 +743,11 @@ app.post('/api/user-clubs', async (req, res) => {
   res.status(201).json(userClub);
 });
 
-app.delete('/api/user-clubs/:userId/:clubId', async (req, res) => {
+app.delete('/api/user-clubs/:userId/:clubId', authenticate, async (req, res) => {
   const { userId, clubId } = req.params;
+  if (req.user!.id !== userId) {
+    return res.status(403).json({ error: 'Cannot remove another user\'s membership' });
+  }
   await database.removeUserClub(userId, clubId);
   res.json({ message: 'Club left' });
 });
@@ -642,20 +760,29 @@ app.get('/api/clubs/:clubId/members/pending', async (req, res) => {
   res.json(members);
 });
 
-app.put('/api/clubs/:clubId/members/:userId/approve', async (req, res) => {
+app.put('/api/clubs/:clubId/members/:userId/approve', authenticate, async (req, res) => {
   const { clubId, userId } = req.params;
+  if (!await requirePresident(req.user!.id, clubId)) {
+    return res.status(403).json({ error: 'Only club presidents can approve members' });
+  }
   await database.approveClubMember(userId, clubId);
   res.json({ message: 'Member approved' });
 });
 
-app.delete('/api/clubs/:clubId/members/:userId/reject', async (req, res) => {
+app.delete('/api/clubs/:clubId/members/:userId/reject', authenticate, async (req, res) => {
   const { clubId, userId } = req.params;
+  if (!await requirePresident(req.user!.id, clubId)) {
+    return res.status(403).json({ error: 'Only club presidents can reject members' });
+  }
   await database.removeUserClub(userId, clubId);
   res.json({ message: 'Member rejected' });
 });
 
-app.get('/api/users/:userId/president-clubs', async (req, res) => {
+app.get('/api/users/:userId/president-clubs', authenticate, async (req, res) => {
   const { userId } = req.params;
+  if (req.user!.id !== userId) {
+    return res.status(403).json({ error: 'Cannot view another user\'s president clubs' });
+  }
   const clubs = await database.getPresidentClubs(userId);
   res.json(clubs);
 });
@@ -673,12 +800,11 @@ app.get('/api/clubs/:clubId/members', async (req, res) => {
   res.json(members);
 });
 
-app.post('/api/clubs/:clubId/members', async (req, res) => {
+app.post('/api/clubs/:clubId/members', authenticate, async (req, res) => {
   const { clubId } = req.params;
   const { userId: targetUserId, role } = req.body;
-  const { presidentId } = req.query;
 
-  if (!presidentId || !await requirePresident(presidentId as string, clubId)) {
+  if (!await requirePresident(req.user!.id, clubId)) {
     return res.status(403).json({ error: 'Only club presidents can add members' });
   }
   if (!targetUserId || !role) {
@@ -705,11 +831,10 @@ app.post('/api/clubs/:clubId/members', async (req, res) => {
   res.status(201).json(userClub);
 });
 
-app.delete('/api/clubs/:clubId/members/:userId', async (req, res) => {
+app.delete('/api/clubs/:clubId/members/:userId', authenticate, async (req, res) => {
   const { clubId, userId } = req.params;
-  const { presidentId } = req.query;
 
-  if (!presidentId || !await requirePresident(presidentId as string, clubId)) {
+  if (!await requirePresident(req.user!.id, clubId)) {
     return res.status(403).json({ error: 'Only club presidents can remove members' });
   }
 
@@ -738,14 +863,23 @@ app.get('/api/users/search', async (req, res) => {
 
 // ==================== REVIEWS ROUTES ====================
 
-app.get('/api/reviews/:userId', async (req, res) => {
-  const reviews = await database.getReviewsByUser(req.params.userId);
+app.get('/api/reviews/me', authenticate, async (req, res) => {
+  const reviews = await database.getReviewsByUser(req.user!.id);
   res.json(reviews);
 });
 
-app.post('/api/reviews', async (req, res) => {
+app.get('/api/reviews/:userId', authenticate, async (req, res) => {
+  if (req.user!.id !== req.params.userId) {
+    return res.status(403).json({ error: 'Cannot view another user\'s reviews' });
+  }
+  const reviews = await database.getReviewsByUser(req.user!.id);
+  res.json(reviews);
+});
+
+app.post('/api/reviews', authenticate, async (req, res) => {
   const review: UserReview = {
     ...req.body,
+    userId: req.user!.id,
     id: `review_${uuidv4()}`,
     createdAt: new Date().toISOString(),
   };
@@ -787,11 +921,11 @@ app.get('/api/debug/seed', async (_req, res) => {
 
 // ==================== PUSH NOTIFICATION ROUTES ====================
 
-app.post('/api/push-tokens/register', async (req, res) => {
+app.post('/api/push-tokens/register', authenticate, async (req, res) => {
   try {
-    const { userId, token } = req.body;
-    if (!userId || !token) return res.status(400).json({ error: 'userId and token required' });
-    await database.registerPushToken(userId, token);
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'token required' });
+    await database.registerPushToken(req.user!.id, token);
     res.json({ registered: true });
   } catch (e: any) {
     console.error('Failed to register push token:', e);
@@ -807,7 +941,7 @@ app.get('/api/images/:entityType/:entityId', async (req, res) => {
   res.json(images);
 });
 
-app.post('/api/images', async (req, res) => {
+app.post('/api/images', authenticate, async (req, res) => {
   const image: Image = {
     ...req.body,
     id: `img_${uuidv4()}`,
@@ -817,13 +951,13 @@ app.post('/api/images', async (req, res) => {
   res.status(201).json(image);
 });
 
-app.delete('/api/images/:id', async (req, res) => {
+app.delete('/api/images/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   await database.deleteImage(id);
   res.json({ message: 'Image deleted' });
 });
 
-app.delete('/api/images/:entityType/:entityId', async (req, res) => {
+app.delete('/api/images/:entityType/:entityId', authenticate, async (req, res) => {
   const { entityType, entityId } = req.params;
   await database.deleteImagesByEntity(entityType, entityId);
   res.json({ message: 'Images deleted' });
@@ -836,10 +970,8 @@ app.get('/api/stats', async (_req, res) => {
   res.json(stats);
 });
 
-// Global error handler (must be after all routes)
+// Global error handler
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error', details: err?.message || '' });
 });
-
-

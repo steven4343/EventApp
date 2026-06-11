@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -8,7 +9,12 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, Tex
 import * as ImagePicker from 'expo-image-picker';
 
 import { AdminLoginScreen } from './components/screens/AdminLoginScreen';
+import NotificationBell from './components/NotificationBell';
 import { adminApi } from './api';
+import { connectSocket, disconnectSocket } from './services/socket';
+
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+const WARNING_BEFORE = 60 * 1000;
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -87,8 +93,7 @@ function DashboardScreen() {
   );
 }
 
-function EventFormModal({ visible, onClose, onSaved, event }: { visible: boolean; onClose: () => void; onSaved: () => void; event?: any }) {
-  const isEdit = !!event;
+function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -100,24 +105,6 @@ function EventFormModal({ visible, onClose, onSaved, event }: { visible: boolean
   const [imageUrl, setImageUrl] = useState('');
   const [imageData, setImageData] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (event) {
-      setTitle(event.title || '');
-      setDate(event.date || '');
-      setTime(event.time || '');
-      setLocation(event.location || '');
-      setCategory(event.category || '');
-      setDescription(event.description || '');
-      setPrice(String(event.price ?? ''));
-      setMaxCapacity(String(event.maxCapacity ?? ''));
-      setImageUrl('');
-      setImageData('');
-    } else {
-      setTitle(''); setDate(''); setTime(''); setLocation('');
-      setCategory(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl(''); setImageData('');
-    }
-  }, [event]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -157,31 +144,37 @@ function EventFormModal({ visible, onClose, onSaved, event }: { visible: boolean
     }
   };
 
-  const finalImage = imageData || imageUrl || (isEdit && event?.image ? event.image : 'https://picsum.photos/seed/event/400');
+  const finalImage = imageData || imageUrl || 'https://picsum.photos/seed/event/400';
 
-  const handleSave = async () => {
+  const handleCreate = async () => {
     if (!title || !date || !location) {
       Alert.alert('Error', 'Title, date, and location are required');
       return;
     }
     setSubmitting(true);
     try {
-      if (isEdit) {
-        const updates: any = { title, date, time: time || 'TBD', location, category: category || 'General', description: description || '', price: parseFloat(price) || 0, maxCapacity: parseInt(maxCapacity) || 0 };
-        if (finalImage && finalImage !== event.image) updates.image = finalImage;
-        await adminApi.updateEvent(event.id, updates);
-        Alert.alert('Success', 'Event updated');
-      } else {
-        await adminApi.createEvent({
-          title, date, time: time || 'TBD', location, category: category || 'General', description: description || '',
-          image: finalImage, price: parseFloat(price) || 0, attendees: 0, maxCapacity: parseInt(maxCapacity) || 0, rating: 0, reviews: 0, status: 'Draft',
-        });
-        Alert.alert('Success', 'Event created');
-      }
-      onSaved();
+      await adminApi.createEvent({
+        title,
+        date,
+        time: time || 'TBD',
+        location,
+        category: category || 'General',
+        description: description || '',
+        image: finalImage,
+        price: parseFloat(price) || 0,
+        attendees: 0,
+        maxCapacity: parseInt(maxCapacity) || 0,
+        rating: 0,
+        reviews: 0,
+        status: 'Draft',
+      });
+      Alert.alert('Success', 'Event created');
+      onCreated();
       onClose();
+      setTitle(''); setDate(''); setTime(''); setLocation('');
+      setCategory(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl(''); setImageData('');
     } catch (e) {
-      Alert.alert('Error', isEdit ? 'Failed to update event' : 'Failed to create event');
+      Alert.alert('Error', 'Failed to create event');
     } finally {
       setSubmitting(false);
     }
@@ -191,7 +184,7 @@ function EventFormModal({ visible, onClose, onSaved, event }: { visible: boolean
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <ScrollView style={styles.modalContent}>
-          <Text style={styles.modalTitle}>{isEdit ? 'Edit Event' : 'Create Event'}</Text>
+          <Text style={styles.modalTitle}>Create Event</Text>
           <TextInput style={styles.input} placeholder="Title *" value={title} onChangeText={setTitle} />
           <TextInput style={styles.input} placeholder="Date (YYYY-MM-DD) *" value={date} onChangeText={setDate} />
           <TextInput style={styles.input} placeholder="Time (e.g. 7:00 PM)" value={time} onChangeText={setTime} />
@@ -217,7 +210,7 @@ function EventFormModal({ visible, onClose, onSaved, event }: { visible: boolean
           <TextInput style={[styles.input, styles.textArea]} placeholder="Description" value={description} onChangeText={setDescription} multiline />
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.submitButton} onPress={handleSave} disabled={submitting}><Text style={styles.submitText}>{submitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Event'}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.submitButton} onPress={handleCreate} disabled={submitting}><Text style={styles.submitText}>{submitting ? 'Creating...' : 'Create Event'}</Text></TouchableOpacity>
           </View>
         </ScrollView>
       </View>
@@ -228,8 +221,7 @@ function EventFormModal({ visible, onClose, onSaved, event }: { visible: boolean
 function EventsManagementScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [showCreate, setShowCreate] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
   const categories = ['', 'Academic', 'Cultural', 'Hackathon', 'Social', 'Sports'];
 
@@ -281,21 +273,6 @@ function EventsManagementScreen() {
     ]);
   };
 
-  const openCreate = () => {
-    setEditingEvent(null);
-    setShowForm(true);
-  };
-
-  const openEdit = (event: any) => {
-    setEditingEvent(event);
-    setShowForm(true);
-  };
-
-  const closeForm = () => {
-    setShowForm(false);
-    setEditingEvent(null);
-  };
-
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Published': return styles.statusPublished;
@@ -321,7 +298,7 @@ function EventsManagementScreen() {
             <Text style={styles.headerTitle}>Events</Text>
             <Text style={styles.headerSubtitle}>Create and manage events</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={openCreate}>
+          <TouchableOpacity style={styles.addButton} onPress={() => setShowCreate(true)}>
             <Text style={styles.addButtonText}>+ New</Text>
           </TouchableOpacity>
         </View>
@@ -355,9 +332,6 @@ function EventsManagementScreen() {
                 <Text style={[styles.itemStatus, getStatusStyle(event.status)]}>{event.status}</Text>
               </View>
               <View style={styles.itemActions}>
-                <TouchableOpacity style={styles.actionPublish} onPress={() => openEdit(event)}>
-                  <Text style={[styles.actionText, { color: '#2563eb' }]}>Edit</Text>
-                </TouchableOpacity>
                 {event.status !== 'Published' && (
                   <TouchableOpacity style={styles.actionPublish} onPress={() => handlePublish(event.id)}>
                     <Text style={styles.actionText}>Publish</Text>
@@ -377,7 +351,7 @@ function EventsManagementScreen() {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
-      <EventFormModal visible={showForm} onClose={closeForm} onSaved={loadEvents} event={editingEvent} />
+      <CreateEventModal visible={showCreate} onClose={() => setShowCreate(false)} onCreated={loadEvents} />
     </View>
   );
 }
@@ -960,6 +934,38 @@ function AdminTabs({ admin, onLogout }: { admin: any; onLogout: () => void }) {
 export default function App() {
   const [admin, setAdmin] = useState<any>(null);
   const [ready, setReady] = useState(false);
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivity = useRef<number>(Date.now());
+
+  const clearTimers = () => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+  };
+
+  const doLogout = useCallback(() => {
+    clearTimers();
+    adminApi.logout();
+    setAdmin(null);
+    disconnectSocket();
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (!admin) return;
+    lastActivity.current = Date.now();
+    clearTimers();
+    warningTimer.current = setTimeout(() => {
+      Alert.alert(
+        'Session Expiring',
+        'Your session will expire in 1 minute due to inactivity.',
+        [{ text: 'OK' }]
+      );
+    }, SESSION_TIMEOUT_MS - WARNING_BEFORE);
+    inactivityTimer.current = setTimeout(() => {
+      doLogout();
+      Alert.alert('Session Expired', 'Please login again.');
+    }, SESSION_TIMEOUT_MS);
+  }, [admin, doLogout]);
 
   useEffect(() => {
     (async () => {
@@ -967,18 +973,44 @@ export default function App() {
       const currentAdmin = adminApi.getCurrentAdmin();
       if (currentAdmin) {
         setAdmin(currentAdmin);
+        if (currentAdmin.id) connectSocket(currentAdmin.id);
       }
       setReady(true);
     })();
   }, []);
 
+  useEffect(() => {
+    if (admin) resetInactivityTimer();
+  }, [admin, resetInactivityTimer]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && admin) {
+        const elapsed = Date.now() - lastActivity.current;
+        if (elapsed >= SESSION_TIMEOUT_MS) {
+          doLogout();
+          Alert.alert('Session Expired', 'Your session has expired due to inactivity.');
+        } else {
+          resetInactivityTimer();
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [admin, resetInactivityTimer, doLogout]);
+
   const handleLogin = (loggedInAdmin: any) => {
     setAdmin(loggedInAdmin);
+    if (loggedInAdmin?.id) {
+      connectSocket(loggedInAdmin.id);
+    }
+    resetInactivityTimer();
   };
 
   const handleLogout = () => {
+    clearTimers();
     adminApi.logout();
     setAdmin(null);
+    disconnectSocket();
   };
 
   if (!ready) {
@@ -994,7 +1026,12 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="auto" />
         {admin ? (
-          <AdminTabs admin={admin} onLogout={handleLogout} />
+          <View style={{ flex: 1 }}>
+            <AdminTabs admin={admin} onLogout={handleLogout} />
+            <View style={styles.notifFloating}>
+              <NotificationBell userId={admin.id} />
+            </View>
+          </View>
         ) : (
           <AdminLoginScreen onLogin={handleLogin} />
         )}
@@ -1479,5 +1516,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     overflow: 'hidden',
+  },
+  notifFloating: {
+    position: 'absolute',
+    top: 50,
+    right: 8,
+    zIndex: 100,
   },
 });
