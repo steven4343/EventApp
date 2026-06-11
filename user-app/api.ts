@@ -1,8 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Event, Club } from './types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = process.env.API_URL || process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-production-9af6.up.railway.app/api';
-const TOKEN_KEY = 'cuz_events_token';
+const TOKEN_KEY = 'cuz_events_user_token';
 
 interface BackendEvent {
   id: string;
@@ -55,14 +55,12 @@ function toClubImage(url: string): { uri: string } {
 
 class UserApi {
   private currentUser: any = null;
+  private token: string | null = null;
   private clubsCache: BackendClub[] | null = null;
-  private authToken: string | null = null;
 
   private authHeaders(): Record<string, string> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.authToken) {
-      headers['Authorization'] = `Bearer ${this.authToken}`;
-    }
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
     return headers;
   }
 
@@ -70,45 +68,22 @@ class UserApi {
     return this.currentUser;
   }
 
-  getToken(): string | null {
-    return this.authToken;
-  }
-
-  async setToken(token: string | null): Promise<void> {
-    this.authToken = token;
-    if (token) {
-      await AsyncStorage.setItem(TOKEN_KEY, JSON.stringify(token));
-    } else {
-      await AsyncStorage.removeItem(TOKEN_KEY);
-    }
-  }
-
-  async loadToken(): Promise<string | null> {
-    try {
-      const stored = await AsyncStorage.getItem(TOKEN_KEY);
-      if (stored) {
-        this.authToken = JSON.parse(stored);
-        return this.authToken;
-      }
-    } catch (e) {
-      console.error('Failed to load token:', e);
-    }
-    return null;
-  }
-
   setCurrentUser(user: any) {
     this.currentUser = user;
   }
 
-  private async authFetch(url: string, options?: RequestInit): Promise<Response> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options?.headers as Record<string, string>),
-    };
-    if (this.authToken) {
-      headers['Authorization'] = `Bearer ${this.authToken}`;
-    }
-    return fetch(url, { ...options, headers });
+  getToken() {
+    return this.token;
+  }
+
+  setToken(token: string | null) {
+    this.token = token;
+  }
+
+  async loadToken(): Promise<void> {
+    try {
+      this.token = await AsyncStorage.getItem(TOKEN_KEY);
+    } catch {}
   }
 
   async login(email: string, password: string) {
@@ -119,22 +94,11 @@ class UserApi {
     });
     if (!res.ok) return null;
     const result = await res.json();
-    if (result.token) {
-      await this.setToken(result.token);
-    }
+    this.token = result.token;
+    if (this.token) await AsyncStorage.setItem(TOKEN_KEY, this.token);
     const user = result.user || result;
     this.currentUser = user;
     return user;
-  }
-
-  async registerPushToken(token: string): Promise<void> {
-    if (!this.authToken) return;
-    try {
-      await this.authFetch(`${BASE_URL}/push-tokens/register`, {
-        method: 'POST',
-        body: JSON.stringify({ token }),
-      });
-    } catch {}
   }
 
   async register(userData: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number }) {
@@ -145,34 +109,15 @@ class UserApi {
     });
     if (!res.ok) return null;
     const result = await res.json();
-    if (result.token) {
-      await this.setToken(result.token);
-    }
-    this.currentUser = result.user;
-    return result.user;
-  }
-
-  async googleLogin(idToken: string) {
-    const res = await fetch(`${BASE_URL}/auth/google`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.token) {
-      await this.setToken(data.token);
-    }
-    this.currentUser = data.user;
-    return data;
+    this.token = result.token;
+    if (this.token) await AsyncStorage.setItem(TOKEN_KEY, this.token);
+    return result.user || result;
   }
 
   async logout(): Promise<void> {
-    await this.setToken(null);
     this.currentUser = null;
-    try {
-      await fetch(`${BASE_URL}/auth/logout`, { method: 'POST' });
-    } catch {}
+    this.token = null;
+    await AsyncStorage.removeItem(TOKEN_KEY);
   }
 
   async getClubs(): Promise<BackendClub[]> {
@@ -241,12 +186,6 @@ class UserApi {
     };
   }
 
-  async getRecentEvents(after: string): Promise<BackendEvent[]> {
-    const res = await fetch(`${BASE_URL}/events/recent?after=${encodeURIComponent(after)}`);
-    if (!res.ok) return [];
-    return res.json();
-  }
-
   async getClubsForScreen(): Promise<Club[]> {
     const backendClubs = await this.getClubs();
     return backendClubs.map(c => ({
@@ -283,80 +222,85 @@ class UserApi {
   }
 
   async getTickets() {
-    if (!this.authToken) return [];
-    const res = await this.authFetch(`${BASE_URL}/tickets/me`);
+    if (!this.currentUser) return [];
+    const res = await fetch(`${BASE_URL}/tickets/${this.currentUser.id}`, { headers: this.authHeaders() });
     return res.json();
   }
 
   async getSavedEvents() {
-    if (!this.authToken) return [];
-    const res = await this.authFetch(`${BASE_URL}/saved/me`);
+    if (!this.currentUser) return [];
+    const res = await fetch(`${BASE_URL}/saved/${this.currentUser.id}`, { headers: this.authHeaders() });
     return res.json();
   }
 
   async getUserClubs() {
-    if (!this.authToken) return [];
-    const res = await this.authFetch(`${BASE_URL}/user-clubs/me`);
+    if (!this.currentUser) return [];
+    const res = await fetch(`${BASE_URL}/user-clubs/${this.currentUser.id}`, { headers: this.authHeaders() });
     return res.json();
   }
 
   async saveEvent(eventId: string): Promise<void> {
-    if (!this.authToken) return;
-    await this.authFetch(`${BASE_URL}/saved`, {
+    if (!this.currentUser) return;
+    await fetch(`${BASE_URL}/saved`, {
       method: 'POST',
-      body: JSON.stringify({ eventId }),
+      headers: this.authHeaders(),
+      body: JSON.stringify({ userId: this.currentUser.id, eventId }),
     });
   }
 
   async unsaveEvent(eventId: string): Promise<void> {
-    if (!this.authToken || !this.currentUser) return;
-    await this.authFetch(`${BASE_URL}/saved/${this.currentUser.id}/${eventId}`, {
+    if (!this.currentUser) return;
+    await fetch(`${BASE_URL}/saved/${this.currentUser.id}/${eventId}`, {
       method: 'DELETE',
+      headers: this.authHeaders(),
     });
   }
 
   async requestJoinClub(clubId: string): Promise<void> {
-    if (!this.authToken) return;
-    const res = await this.authFetch(`${BASE_URL}/user-clubs/request`, {
+    if (!this.currentUser) return;
+    const res = await fetch(`${BASE_URL}/user-clubs/request`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clubId }),
+      headers: this.authHeaders(),
+      body: JSON.stringify({ userId: this.currentUser.id, clubId }),
     });
     if (!res.ok) throw new Error('Failed to request join');
   }
 
   async leaveClub(clubId: string): Promise<void> {
-    if (!this.authToken || !this.currentUser) return;
-    await this.authFetch(`${BASE_URL}/user-clubs/${this.currentUser.id}/${clubId}`, {
+    if (!this.currentUser) return;
+    await fetch(`${BASE_URL}/user-clubs/${this.currentUser.id}/${clubId}`, {
       method: 'DELETE',
+      headers: this.authHeaders(),
     });
   }
 
   async getClubMembership(clubId: string): Promise<{ role: string } | null> {
-    if (!this.authToken || !this.currentUser) return null;
-    const res = await this.authFetch(`${BASE_URL}/user-clubs/${this.currentUser.id}/${clubId}`);
+    if (!this.currentUser) return null;
+    const res = await fetch(`${BASE_URL}/user-clubs/${this.currentUser.id}/${clubId}`, { headers: this.authHeaders() });
     if (!res.ok) return null;
     return res.json();
   }
 
   async getReviews() {
-    if (!this.authToken) return [];
-    const res = await this.authFetch(`${BASE_URL}/reviews/me`);
+    if (!this.currentUser) return [];
+    const res = await fetch(`${BASE_URL}/reviews/${this.currentUser.id}`, { headers: this.authHeaders() });
     return res.json();
   }
 
   async addReview(itemId: string, itemType: 'event' | 'club', rating: number, comment: string) {
-    if (!this.authToken) throw new Error('Not logged in');
-    const res = await this.authFetch(`${BASE_URL}/reviews`, {
+    if (!this.currentUser) throw new Error('Not logged in');
+    const res = await fetch(`${BASE_URL}/reviews`, {
       method: 'POST',
-      body: JSON.stringify({ itemId, itemType, rating, comment }),
+      headers: this.authHeaders(),
+      body: JSON.stringify({ userId: this.currentUser.id, itemId, itemType, rating, comment }),
     });
     return res.json();
   }
 
   async updateProfile(userId: string, updates: { name?: string; faculty?: string; year?: number; avatar?: string }) {
-    const res = await this.authFetch(`${BASE_URL}/users/${userId}`, {
+    const res = await fetch(`${BASE_URL}/users/${userId}`, {
       method: 'PUT',
+      headers: this.authHeaders(),
       body: JSON.stringify(updates),
     });
     if (!res.ok) throw new Error('Failed to update profile');
@@ -365,8 +309,9 @@ class UserApi {
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    const res = await this.authFetch(`${BASE_URL}/users/${userId}`, {
+    const res = await fetch(`${BASE_URL}/users/${userId}`, {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: newPassword }),
     });
     if (!res.ok) throw new Error('Failed to change password');
@@ -383,56 +328,60 @@ class UserApi {
   }
 
   async getClubMembers(clubId: string) {
-    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members`);
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members`, { headers: this.authHeaders() });
     return res.json();
   }
 
   async addClubMember(clubId: string, userId: string, role: string, presidentId: string) {
-    const res = await this.authFetch(`${BASE_URL}/clubs/${clubId}/members`, {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members?presidentId=${presidentId}`, {
       method: 'POST',
+      headers: this.authHeaders(),
       body: JSON.stringify({ userId, role }),
     });
     if (!res.ok) throw new Error('Failed to add member');
     return res.json();
   }
 
-  async removeClubMember(clubId: string, userId: string) {
-    const res = await this.authFetch(`${BASE_URL}/clubs/${clubId}/members/${userId}`, {
+  async removeClubMember(clubId: string, userId: string, presidentId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}?presidentId=${presidentId}`, {
       method: 'DELETE',
+      headers: this.authHeaders(),
     });
     if (!res.ok) throw new Error('Failed to remove member');
   }
 
   async searchUser(email: string) {
-    const res = await fetch(`${BASE_URL}/users/search?email=${encodeURIComponent(email)}`);
+    const res = await fetch(`${BASE_URL}/users/search?email=${encodeURIComponent(email)}`, { headers: this.authHeaders() });
     if (!res.ok) return null;
     return res.json();
   }
 
   async getPendingMembers(clubId: string) {
-    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/pending`);
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/pending`, { headers: this.authHeaders() });
     if (!res.ok) return [];
     return res.json();
   }
 
   async approveMember(clubId: string, userId: string) {
-    const res = await this.authFetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/approve`, {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/approve`, {
       method: 'PUT',
+      headers: this.authHeaders(),
     });
     if (!res.ok) throw new Error('Failed to approve member');
   }
 
   async rejectMember(clubId: string, userId: string) {
-    const res = await this.authFetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/reject`, {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}/members/${userId}/reject`, {
       method: 'DELETE',
+      headers: this.authHeaders(),
     });
     if (!res.ok) throw new Error('Failed to reject member');
   }
 
-  async updateClub(clubId: string, updates: any) {
-    const res = await this.authFetch(`${BASE_URL}/clubs/${clubId}`, {
+  async updateClub(clubId: string, updates: any, presidentId: string) {
+    const res = await fetch(`${BASE_URL}/clubs/${clubId}?presidentId=${presidentId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders(),
       body: JSON.stringify(updates),
     });
     if (!res.ok) throw new Error('Failed to update club');
@@ -440,17 +389,18 @@ class UserApi {
   }
 
   async purchaseTicket(eventId: string, seat: string, price: number) {
-    if (!this.authToken) throw new Error('Not logged in');
-    const res = await this.authFetch(`${BASE_URL}/tickets`, {
+    if (!this.currentUser) throw new Error('Not logged in');
+    const res = await fetch(`${BASE_URL}/tickets`, {
       method: 'POST',
-      body: JSON.stringify({ eventId, seat, status: 'Confirmed', price }),
+      headers: this.authHeaders(),
+      body: JSON.stringify({ userId: this.currentUser.id, eventId, seat, status: 'Confirmed', price }),
     });
     const ticket = await res.json();
-    const event = await fetch(`${BASE_URL}/events/${eventId}`).then(r => r.json());
+    const event = await fetch(`${BASE_URL}/events/${eventId}`, { headers: this.authHeaders() }).then(r => r.json());
     if (event) {
       await fetch(`${BASE_URL}/events/${eventId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.authHeaders(),
         body: JSON.stringify({ attendees: event.attendees + 1 }),
       });
     }

@@ -1,8 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
+import { AppState, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userApi } from '../api';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 const USER_STORAGE_KEY = 'cuz_events_user';
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+const WARNING_BEFORE = 60 * 1000;
 
 export interface UserProfile {
   id: string;
@@ -18,7 +22,6 @@ interface AuthContextType {
   user: UserProfile | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (data: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number }) => Promise<boolean>;
-  googleSignIn: (idToken: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -28,10 +31,67 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivity = useRef<number>(Date.now());
+
+  const clearTimers = () => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+  };
+
+  const doLogout = useCallback(() => {
+    clearTimers();
+    setUser(null);
+    storeUser(null);
+    userApi.logout();
+    disconnectSocket();
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (!user) return;
+    lastActivity.current = Date.now();
+    clearTimers();
+    warningTimer.current = setTimeout(() => {
+      Alert.alert(
+        'Session Expiring',
+        'Your session will expire in 1 minute due to inactivity.',
+        [{ text: 'OK' }]
+      );
+    }, SESSION_TIMEOUT_MS - WARNING_BEFORE);
+    inactivityTimer.current = setTimeout(() => {
+      doLogout();
+      Alert.alert('Session Expired', 'Please login again.');
+    }, SESSION_TIMEOUT_MS);
+  }, [user, doLogout]);
 
   useEffect(() => {
     loadStoredUser();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      connectSocket(user.id);
+      resetInactivityTimer();
+    } else {
+      disconnectSocket();
+    }
+  }, [user, resetInactivityTimer]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && user) {
+        const elapsed = Date.now() - lastActivity.current;
+        if (elapsed >= SESSION_TIMEOUT_MS) {
+          doLogout();
+          Alert.alert('Session Expired', 'Your session has expired due to inactivity.');
+        } else {
+          resetInactivityTimer();
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [user, resetInactivityTimer, doLogout]);
 
   const loadStoredUser = async () => {
     try {
@@ -75,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(profile);
         userApi.setCurrentUser(profile);
         storeUser(profile);
+        resetInactivityTimer();
         return true;
       }
       return false;
@@ -98,7 +159,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar: apiUser.avatar,
         };
         setUser(profile);
+        userApi.setCurrentUser(profile);
         storeUser(profile);
+        resetInactivityTimer();
         return true;
       }
       return false;
@@ -108,37 +171,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const googleSignIn = async (idToken: string): Promise<boolean> => {
-    try {
-      console.log('googleSignIn: calling api with idToken');
-      const data = await userApi.googleLogin(idToken);
-      console.log('googleSignIn: api returned', data);
-      if (data && data.user) {
-        const profile: UserProfile = {
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          studentId: data.user.studentId,
-          faculty: data.user.faculty,
-          year: data.user.year,
-          avatar: data.user.avatar,
-        };
-        setUser(profile);
-        userApi.setCurrentUser(profile);
-        storeUser(profile);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      console.error('Google sign-in error:', e);
-      return false;
-    }
-  };
-
   const logout = async (): Promise<void> => {
+    clearTimers();
     setUser(null);
     storeUser(null);
-    await userApi.logout();
+    userApi.logout();
+    disconnectSocket();
   };
 
   const updateProfile = async (data: Partial<UserProfile>): Promise<boolean> => {
@@ -175,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, googleSignIn, logout, updateProfile, changePassword }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateProfile, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
