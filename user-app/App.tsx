@@ -9,6 +9,7 @@ import { userApi } from './api';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './components/screens/LoginScreen';
+import NotificationBell from './components/NotificationBell';
 import { onRedirectToken, checkRedirectResult } from './services/googleAuth';
 import { EventListScreen } from './components/screens/EventListScreen';
 import { EventDetailsScreen } from './components/screens/EventDetailsScreen';
@@ -193,14 +194,21 @@ function AppContent() {
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
-      {showLogin ? (
-        <LoginScreen onCancel={() => setShowLogin(false)} />
-      ) : (
-        <HomeTabs requireAuth={requireAuth} />
+    <View style={{ flex: 1 }}>
+      <NavigationContainer>
+        <StatusBar style="auto" />
+        {showLogin ? (
+          <LoginScreen onCancel={() => setShowLogin(false)} />
+        ) : (
+          <HomeTabs requireAuth={requireAuth} />
+        )}
+      </NavigationContainer>
+      {user && (
+        <View style={{ position: 'absolute', top: 50, right: 8, zIndex: 100 }}>
+          <NotificationBell userId={user.id} />
+        </View>
       )}
-    </NavigationContainer>
+    </View>
   );
 }
 
