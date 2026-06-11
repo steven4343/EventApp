@@ -240,6 +240,33 @@ app.post('/api/users/register', async (req, res) => {
   res.status(201).json(result);
 });
 
+app.post('/api/seed/admin', async (req, res) => {
+  const { email, password, name, secret } = req.body;
+  if (secret !== (process.env.SEED_KEY || 'cuz-admin-seed-2024')) {
+    return res.status(403).json({ error: 'Invalid seed key' });
+  }
+  const existing = await database.getUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ error: 'Email already registered' });
+  }
+  const adminUser: User = {
+    id: `user_${uuidv4()}`,
+    name: name || 'Admin',
+    email,
+    password,
+    studentId: '',
+    faculty: 'Administration',
+    year: 0,
+    avatar: 'https://picsum.photos/seed/admin/200',
+    joinedAt: new Date().toISOString().split('T')[0],
+    isActive: true,
+    role: 'admin',
+  };
+  await database.createUser(adminUser);
+  const result = issueTokenResponse(adminUser, res);
+  res.status(201).json(result);
+});
+
 app.post('/api/users/login', async (req, res) => {
   const { email, password } = req.body;
 
