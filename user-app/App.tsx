@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, StyleSheet, AppState, Platform } from 'react-native';
 import { requestPermissions, getExpoPushToken, getLastCheckTime, setLastCheckTime, notifyNewEvent } from './utils/notifications';
+import { addNotification } from './utils/notificationStore';
 import { userApi } from './api';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -163,6 +164,13 @@ function AppContent() {
         if (events.length > 0) {
           for (const event of events) {
             await notifyNewEvent('New Event Posted', event.title);
+            await addNotification({
+              id: `notif_${event.id}_${Date.now()}`,
+              title: 'New Event Posted',
+              body: event.title,
+              timestamp: new Date().toISOString(),
+              read: false,
+            });
           }
         }
         await setLastCheckTime(now);

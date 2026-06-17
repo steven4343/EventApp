@@ -1,4 +1,4 @@
-import { StatusBar } from 'expo-status-bar';
+﻿import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -99,12 +99,21 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
   const [category, setCategory] = useState('');
+  const [clubId, setClubId] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [maxCapacity, setMaxCapacity] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageData, setImageData] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const [clubs, setClubs] = useState<any[]>([]);
+  const [showClubPicker, setShowClubPicker] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      adminApi.getClubs().then(setClubs).catch(() => {});
+    }
+  }, [visible]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -151,28 +160,27 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
       Alert.alert('Error', 'Title, date, and location are required');
       return;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      Alert.alert('Error', 'Date must be in YYYY-MM-DD format');
+      return;
+    }
     setSubmitting(true);
     try {
       await adminApi.createEvent({
-        title,
-        date,
-        time: time || 'TBD',
-        location,
+        title, date, time: time || 'TBD', location,
         category: category || 'General',
+        clubId: clubId || undefined,
         description: description || '',
         image: finalImage,
         price: parseFloat(price) || 0,
-        attendees: 0,
-        maxCapacity: parseInt(maxCapacity) || 0,
-        rating: 0,
-        reviews: 0,
-        status: 'Draft',
+        attendees: 0, maxCapacity: parseInt(maxCapacity) || 0,
+        rating: 0, reviews: 0, status: 'Draft',
       });
       Alert.alert('Success', 'Event created');
       onCreated();
       onClose();
       setTitle(''); setDate(''); setTime(''); setLocation('');
-      setCategory(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl(''); setImageData('');
+      setCategory(''); setClubId(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl(''); setImageData('');
     } catch (e) {
       Alert.alert('Error', 'Failed to create event');
     } finally {
@@ -192,13 +200,39 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
           <TextInput style={styles.input} placeholder="Category" value={category} onChangeText={setCategory} />
           <TextInput style={styles.input} placeholder="Price (0 for free)" value={price} onChangeText={setPrice} keyboardType="numeric" />
           <TextInput style={styles.input} placeholder="Max Capacity" value={maxCapacity} onChangeText={setMaxCapacity} keyboardType="numeric" />
+          <TouchableOpacity style={styles.input} onPress={() => setShowClubPicker(true)}>
+            <Text style={{ color: clubId ? '#1e293b' : '#94a3b8', fontSize: 16 }}>
+              {clubId ? (clubs.find(c => c.id === clubId)?.name || 'Selected Club') : 'Select Club (optional)'}
+            </Text>
+          </TouchableOpacity>
+          <Modal visible={showClubPicker} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Club</Text>
+                <ScrollView>
+                  <TouchableOpacity style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }} onPress={() => { setClubId(''); setShowClubPicker(false); }}>
+                    <Text style={{ fontSize: 16, color: '#64748b' }}>None</Text>
+                  </TouchableOpacity>
+                  {clubs.map(club => (
+                    <TouchableOpacity key={club.id} style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: clubId === club.id ? '#dbeafe' : 'transparent' }} onPress={() => { setClubId(club.id); setShowClubPicker(false); }}>
+                      <Text style={{ fontSize: 16, fontWeight: '500', color: '#1e293b' }}>{club.name}</Text>
+                      <Text style={{ fontSize: 13, color: '#64748b' }}>{club.category}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TouchableOpacity style={[styles.cancelButton, { marginTop: 12 }]} onPress={() => setShowClubPicker(false)}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
           <Text style={styles.imageLabel}>Event Photo</Text>
           <View style={styles.imagePickerRow}>
             <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
-              <Text style={styles.imagePickerText}>📁 Gallery</Text>
+              <Text style={styles.imagePickerText}>ðŸ“ Gallery</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.imagePickerButton} onPress={takePhoto}>
-              <Text style={styles.imagePickerText}>📷 Camera</Text>
+              <Text style={styles.imagePickerText}>ðŸ“· Camera</Text>
             </TouchableOpacity>
             <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder="Or paste URL" value={imageUrl} onChangeText={setImageUrl} />
           </View>
@@ -328,6 +362,11 @@ function EventsManagementScreen() {
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemTitle}>{event.title}</Text>
                   <Text style={styles.itemDate}>{event.category} | {event.date} | {event.location}</Text>
+                  <Text style={styles.itemMeta}>
+                    {event.attendees != null ? `${event.attendees}/${event.maxCapacity || 'âˆž'} tickets` : ''}
+                    {event.publishedAt ? ` | Published: ${new Date(event.publishedAt).toLocaleDateString()}` : ''}
+                    {event.updatedAt && event.updatedAt !== event.createdAt ? ` | Updated: ${new Date(event.updatedAt).toLocaleDateString()}` : ''}
+                  </Text>
                 </View>
                 <Text style={[styles.itemStatus, getStatusStyle(event.status)]}>{event.status}</Text>
               </View>
@@ -454,10 +493,10 @@ function CreateClubModal({ visible, onClose, onCreated }: { visible: boolean; on
           <Text style={styles.imageLabel}>Club Photo</Text>
           <View style={styles.imagePickerRow}>
             <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
-              <Text style={styles.imagePickerText}>📁 Gallery</Text>
+              <Text style={styles.imagePickerText}>ðŸ“ Gallery</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.imagePickerButton} onPress={takePhoto}>
-              <Text style={styles.imagePickerText}>📷 Camera</Text>
+              <Text style={styles.imagePickerText}>ðŸ“· Camera</Text>
             </TouchableOpacity>
             <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder="Or paste URL" value={imageUrl} onChangeText={setImageUrl} />
           </View>
@@ -642,54 +681,54 @@ function SettingsScreen({ admin, onLogout }: { admin: any; onLogout: () => void 
         <View style={styles.settingsGroup}>
           <Text style={styles.settingsGroupTitle}>Profile</Text>
           <TouchableOpacity style={styles.settingsItem} onPress={() => { setEditName(admin?.name || ''); setEditEmail(admin?.email || ''); setShowEditProfile(true); }}>
-            <Text style={styles.settingsItemIcon}>✏️</Text>
+            <Text style={styles.settingsItemIcon}>âœï¸</Text>
             <View style={styles.settingsItemText}>
               <Text style={styles.settingsItemLabel}>Edit Profile</Text>
               <Text style={styles.settingsItemSubtext}>Update name and email</Text>
             </View>
-            <Text style={styles.settingsArrow}>›</Text>
+            <Text style={styles.settingsArrow}>â€º</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.settingsGroup}>
           <Text style={styles.settingsGroupTitle}>App</Text>
           <TouchableOpacity style={styles.settingsItem} onPress={() => setShowAbout(true)}>
-            <Text style={styles.settingsItemIcon}>ℹ️</Text>
+            <Text style={styles.settingsItemIcon}>â„¹ï¸</Text>
             <View style={styles.settingsItemText}>
               <Text style={styles.settingsItemLabel}>About App</Text>
               <Text style={styles.settingsItemSubtext}>CUZ Events Admin v1.0.0</Text>
             </View>
-            <Text style={styles.settingsArrow}>›</Text>
+            <Text style={styles.settingsArrow}>â€º</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.settingsItem} onPress={() => Linking.openURL('https://cuzevents.com/privacy')}>
-            <Text style={styles.settingsItemIcon}>📄</Text>
+            <Text style={styles.settingsItemIcon}>ðŸ“„</Text>
             <View style={styles.settingsItemText}>
               <Text style={styles.settingsItemLabel}>Privacy Policy</Text>
               <Text style={styles.settingsItemSubtext}>Read our privacy policy</Text>
             </View>
-            <Text style={styles.settingsArrow}>›</Text>
+            <Text style={styles.settingsArrow}>â€º</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.settingsItem} onPress={() => Linking.openURL('https://cuzevents.com/terms')}>
-            <Text style={styles.settingsItemIcon}>📋</Text>
+            <Text style={styles.settingsItemIcon}>ðŸ“‹</Text>
             <View style={styles.settingsItemText}>
               <Text style={styles.settingsItemLabel}>Terms of Service</Text>
               <Text style={styles.settingsItemSubtext}>Read our terms</Text>
             </View>
-            <Text style={styles.settingsArrow}>›</Text>
+            <Text style={styles.settingsArrow}>â€º</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.settingsGroup}>
           <Text style={styles.settingsGroupTitle}>Account</Text>
           <TouchableOpacity style={styles.settingsItem} onPress={onLogout}>
-            <Text style={styles.settingsItemIcon}>🚪</Text>
+            <Text style={styles.settingsItemIcon}>ðŸšª</Text>
             <View style={styles.settingsItemText}>
               <Text style={[styles.settingsItemLabel, { color: '#ef4444' }]}>Log Out</Text>
               <Text style={styles.settingsItemSubtext}>Sign out of admin account</Text>
             </View>
-            <Text style={styles.settingsArrow}>›</Text>
+            <Text style={styles.settingsArrow}>â€º</Text>
           </TouchableOpacity>
         </View>
 
@@ -831,7 +870,7 @@ function PaymentsManagementScreen() {
                   <Text style={styles.itemDate}>{payment.user_email}</Text>
                   <Text style={styles.itemDate}>Ref: {payment.reference}</Text>
                   <Text style={styles.itemDate}>
-                    {payment.method.toUpperCase()} • ${parseFloat(payment.amount).toFixed(2)} • {payment.ticket_id?.replace('ticket_', '').slice(0, 8).toUpperCase()}
+                    {payment.method.toUpperCase()} â€¢ ${parseFloat(payment.amount).toFixed(2)} â€¢ {payment.ticket_id?.replace('ticket_', '').slice(0, 8).toUpperCase()}
                   </Text>
                 </View>
                 <Text style={[styles.itemStatus, getPaymentStatusStyle(payment.status)]}>
@@ -896,35 +935,35 @@ function AdminTabs({ admin, onLogout }: { admin: any; onLogout: () => void }) {
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="📊" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="ðŸ“Š" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="EventsTab"
         component={EventsStack}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="📅" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="ðŸ“…" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="ClubsTab"
         component={ClubsStack}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="ðŸ " focused={focused} />,
         }}
       />
       <Tab.Screen
         name="Payments"
         component={PaymentsManagementScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="💳" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="ðŸ’³" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="Settings"
         children={() => <SettingsScreen admin={admin} onLogout={onLogout} />}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="⚙️" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="âš™ï¸" focused={focused} />,
         }}
       />
     </Tab.Navigator>
@@ -1236,6 +1275,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748b',
   },
+  itemMeta: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
   itemStatus: {
     fontSize: 12,
     fontWeight: '600',
@@ -1524,3 +1568,4 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
 });
+

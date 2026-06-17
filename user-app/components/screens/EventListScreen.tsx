@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, FlatList, Image, ActivityIndicator, Pressable } from 'react-native';
 
 import { useNavigation } from '@react-navigation/native';
 import { categories, Event } from '../../types';
 import { userApi } from '../../api';
 import { EventCard } from './EventCard';
+import { loadNotifications, getCached, getUnreadCount, markAllRead, AppNotification } from '../../utils/notificationStore';
 
 export function EventListScreen() {
   const navigation = useNavigation<any>();
@@ -13,7 +14,23 @@ export function EventListScreen() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef<View>(null);
+  const notifRef = useRef<View>(null);
+
+  const refreshNotifs = useCallback(async () => {
+    await loadNotifications();
+    setNotifications([...getCached()]);
+    setUnreadCount(getUnreadCount());
+  }, []);
+
+  useEffect(() => {
+    refreshNotifs();
+    const interval = setInterval(refreshNotifs, 30000);
+    return () => clearInterval(interval);
+  }, [refreshNotifs]);
 
   useEffect(() => {
     userApi.getEvents().then(data => {
@@ -53,10 +70,41 @@ export function EventListScreen() {
               <Text style={styles.headerTagline}>Discover. Connect. Celebrate.</Text>
             </View>
           </View>
-          <Pressable style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
-            <Text style={styles.menuDots}>⋮</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.notifButton} onPress={() => { setShowNotifs(!showNotifs); setShowMenu(false); if (!showNotifs) markAllRead().then(refreshNotifs); }}>
+              <Text style={styles.notifBell}>🔔</Text>
+              {unreadCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </Pressable>
+            <Pressable style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
+              <Text style={styles.menuDots}>⋮</Text>
+            </Pressable>
+          </View>
         </View>
+        {showNotifs && (
+          <>
+            <Pressable style={styles.notifOverlay} onPress={() => setShowNotifs(false)} />
+            <View style={styles.notifDropdown} ref={notifRef}>
+              <Text style={styles.notifHeader}>Notifications</Text>
+              {notifications.length === 0 ? (
+                <Text style={styles.notifEmpty}>No new notifications</Text>
+              ) : (
+                <ScrollView style={styles.notifScroll} nestedScrollEnabled>
+                  {notifications.map(n => (
+                    <View key={n.id} style={[styles.notifItem, !n.read && styles.notifItemUnread]}>
+                      <Text style={styles.notifItemTitle}>{n.title}</Text>
+                      <Text style={styles.notifItemBody}>{n.body}</Text>
+                      <Text style={styles.notifItemTime}>{new Date(n.timestamp).toLocaleDateString()}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          </>
+        )}
         {showMenu && (
           <>
             <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)} />
@@ -154,9 +202,9 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#2563eb',
-    paddingTop: 24,
+    paddingTop: 28,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     shadowColor: '#2563eb',
@@ -169,6 +217,105 @@ const styles = StyleSheet.create({
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  notifButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBell: {
+    fontSize: 20,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#ef4444',
+    borderRadius: 9,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  notifOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: -1000,
+    zIndex: 20,
+  },
+  notifDropdown: {
+    position: 'absolute',
+    top: 80,
+    right: 16,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 8,
+    minWidth: 280,
+    maxHeight: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    zIndex: 30,
+  },
+  notifHeader: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  notifEmpty: {
+    fontSize: 14,
+    color: '#94a3b8',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  notifScroll: {
+    maxHeight: 220,
+  },
+  notifItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f8fafc',
+  },
+  notifItemUnread: {
+    backgroundColor: '#eff6ff',
+  },
+  notifItemTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  notifItemBody: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1e293b',
+    marginTop: 2,
+  },
+  notifItemTime: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 2,
   },
   headerContent: {
     flexDirection: 'row',
