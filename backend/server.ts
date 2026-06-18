@@ -36,7 +36,7 @@ app.use(cookieParser());
 app.use('/images', express.static('public/images'));
 
 // Socket.IO: track connected users
-io.on('connection', (socket) => {
+io.on('connection', (socket: any) => {
   console.log(`Socket connected: ${socket.id}`);
   socket.on('register', (userId: string) => {
     socket.data.userId = userId;
