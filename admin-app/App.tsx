@@ -195,7 +195,7 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
         <ScrollView style={styles.modalContent}>
           <Text style={styles.modalTitle}>Create Event</Text>
           <TextInput style={styles.input} placeholder="Title *" value={title} onChangeText={setTitle} />
-          <TextInput style={styles.input} placeholder="Date (YYYY-MM-DD) *" value={date} onChangeText={setDate} />
+          <TextInput style={styles.input} placeholder="Date (YYYY-MM-DD) * e.g. 2026-06-12" value={date} onChangeText={setDate} />
           <TextInput style={styles.input} placeholder="Time (e.g. 7:00 PM)" value={time} onChangeText={setTime} />
           <TextInput style={styles.input} placeholder="Location *" value={location} onChangeText={setLocation} />
           <TextInput style={styles.input} placeholder="Category" value={category} onChangeText={setCategory} />
