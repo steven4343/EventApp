@@ -161,6 +161,35 @@ class UserApi {
     }));
   }
 
+  async getRecentEvents(after: string): Promise<Event[]> {
+    try {
+      const res = await fetch(`${BASE_URL}/events/recent?after=${encodeURIComponent(after)}`);
+      if (!res.ok) return [];
+      const backendEvents: BackendEvent[] = await res.json();
+      const clubs = await this.getClubs();
+      const clubMap = new Map(clubs.map(c => [c.id, c.name]));
+      return backendEvents.map(e => ({
+        id: e.id,
+        title: e.title,
+        image: toEventImage(e.image),
+        date: e.date,
+        time: e.time,
+        location: e.location,
+        category: e.category,
+        club: clubMap.get(e.clubId) || 'Unknown',
+        clubId: e.clubId,
+        description: e.description,
+        price: e.price,
+        attendees: e.attendees,
+        maxCapacity: e.maxCapacity,
+        rating: e.rating,
+        reviews: e.reviews,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   async getEventById(id: string): Promise<Event | null> {
     const res = await fetch(`${BASE_URL}/events/${id}`);
     if (!res.ok) return null;
@@ -386,6 +415,17 @@ class UserApi {
     });
     if (!res.ok) throw new Error('Failed to update club');
     return res.json();
+  }
+
+  async registerPushToken(token: string): Promise<void> {
+    if (!this.currentUser) return;
+    try {
+      await fetch(`${BASE_URL}/push-tokens/register`, {
+        method: 'POST',
+        headers: this.authHeaders(),
+        body: JSON.stringify({ token, userId: this.currentUser.id }),
+      });
+    } catch { /* silent */ }
   }
 
   async purchaseTicket(eventId: string, seat: string, price: number) {

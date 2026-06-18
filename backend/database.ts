@@ -99,7 +99,7 @@ class Database {
 
   async getRecentEvents(after: string): Promise<Event[]> {
     const { rows } = await pool.query(
-      `SELECT * FROM events WHERE status = $1 AND COALESCE(published_at, created_at) > $2 ORDER BY COALESCE(published_at, created_at) DESC`,
+      `SELECT * FROM events WHERE status = $1 AND GREATEST(COALESCE(published_at, created_at), COALESCE(updated_at, created_at)) > $2 ORDER BY GREATEST(COALESCE(published_at, created_at), COALESCE(updated_at, created_at)) DESC`,
       ['Published', after]
     );
     return rows.map(mapEvent);
