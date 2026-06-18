@@ -46,6 +46,7 @@ export function EventListScreen() {
         body: `${data.title} — ${message}`,
         timestamp: new Date().toISOString(),
         read: false,
+        eventId: data.eventId,
       });
       refreshNotifs();
       userApi.getEvents().then(setEvents);
@@ -116,11 +117,11 @@ export function EventListScreen() {
               ) : (
                 <ScrollView style={styles.notifScroll} nestedScrollEnabled>
                   {notifications.map(n => (
-                    <View key={n.id} style={[styles.notifItem, !n.read && styles.notifItemUnread]}>
+                    <Pressable key={n.id} style={[styles.notifItem, !n.read && styles.notifItemUnread]} onPress={() => { if (n.eventId) { setShowNotifs(false); navigation.navigate('EventDetails', { eventId: n.eventId }); } }}>
                       <Text style={styles.notifItemTitle}>{n.title}</Text>
                       <Text style={styles.notifItemBody}>{n.body}</Text>
                       <Text style={styles.notifItemTime}>{new Date(n.timestamp).toLocaleDateString()}</Text>
-                    </View>
+                    </Pressable>
                   ))}
                 </ScrollView>
               )}

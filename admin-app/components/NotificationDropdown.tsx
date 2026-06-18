@@ -42,11 +42,11 @@ export default function NotificationDropdown() {
             ) : (
               <ScrollView style={styles.scroll} nestedScrollEnabled>
                 {notifications.map(n => (
-                  <View key={n.id} style={[styles.item, !n.read && styles.itemUnread]}>
+                  <Pressable key={n.id} style={[styles.item, !n.read && styles.itemUnread]} onPress={() => setShowNotifs(false)}>
                     <Text style={styles.itemTitle}>{n.title}</Text>
                     <Text style={styles.itemBody}>{n.body}</Text>
                     <Text style={styles.itemTime}>{new Date(n.timestamp).toLocaleDateString()}</Text>
-                  </View>
+                  </Pressable>
                 ))}
               </ScrollView>
             )}

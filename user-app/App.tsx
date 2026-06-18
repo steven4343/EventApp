@@ -126,6 +126,7 @@ function AppContent() {
   const [ready, setReady] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastEventIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!ready) return;
@@ -161,25 +162,47 @@ function AppContent() {
         const lastCheck = await getLastCheckTime();
         const now = new Date().toISOString();
         const events = await userApi.getRecentEvents(lastCheck);
-        if (events.length > 0) {
-          for (const event of events) {
-            await notifyNewEvent('New Event Posted', event.title);
-            await addNotification({
-              id: `notif_${event.id}_${Date.now()}`,
-              title: 'New Event Posted',
-              body: event.title,
-              timestamp: new Date().toISOString(),
-              read: false,
-            });
-          }
+        for (const event of events) {
+          await notifyNewEvent('New Event Posted', event.title);
+          await addNotification({
+            id: `notif_${event.id}_${Date.now()}`,
+            title: 'New Event Posted',
+            body: event.title,
+            timestamp: new Date().toISOString(),
+            read: false,
+            eventId: event.id,
+          });
+          lastEventIds.current.add(event.id);
         }
         await setLastCheckTime(now);
       } catch {
         // silent
       }
     };
+    const checkEventStatus = async () => {
+      try {
+        const all = await userApi.getEvents();
+        const currentIds = new Set(all.map(e => e.id));
+        for (const prevId of lastEventIds.current) {
+          if (!currentIds.has(prevId)) {
+            for (const e of all) {
+              if (e.id === prevId) continue;
+            }
+            await addNotification({
+              id: `notif_${prevId}_${Date.now()}`,
+              title: 'Event Unpublished',
+              body: 'An event was unpublished',
+              timestamp: new Date().toISOString(),
+              read: false,
+              eventId: prevId,
+            });
+          }
+        }
+        lastEventIds.current = currentIds;
+      } catch { /* silent */ }
+    };
     checkNewEvents();
-    pollingRef.current = setInterval(checkNewEvents, 60000);
+    pollingRef.current = setInterval(() => { checkNewEvents(); checkEventStatus(); }, 60000);
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
@@ -197,6 +220,7 @@ function AppContent() {
         body: `${data.title} — ${message}`,
         timestamp: new Date().toISOString(),
         read: false,
+        eventId: data.eventId,
       });
     };
     socket.on('event:status', handler);

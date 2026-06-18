@@ -9,6 +9,7 @@ export interface AppNotification {
   body: string;
   timestamp: string;
   read: boolean;
+  eventId?: string;
 }
 
 let cached: AppNotification[] = [];

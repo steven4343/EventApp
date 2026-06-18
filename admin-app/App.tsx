@@ -1229,6 +1229,7 @@ export default function App() {
             body: event.title,
             timestamp: new Date().toISOString(),
             read: false,
+            eventId: event.id,
           });
         }
       } catch {}
