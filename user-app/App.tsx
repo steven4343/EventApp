@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, StyleSheet, AppState, Platform } from 'react-native';
 import { requestPermissions, getExpoPushToken, getLastCheckTime, setLastCheckTime, notifyNewEvent } from './utils/notifications';
 import { addNotification } from './utils/notificationStore';
+import { getSocket } from './services/socket';
 import { userApi } from './api';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -182,6 +183,24 @@ function AppContent() {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
+  }, [ready, user]);
+
+  useEffect(() => {
+    if (!ready || !user) return;
+    const socket = getSocket();
+    if (!socket) return;
+    const handler = (data: { eventId: string; title: string; status: string; timestamp: string }) => {
+      const message = data.status === 'Published' ? 'New event published' : `Event ${data.status.toLowerCase()}`;
+      addNotification({
+        id: `notif_${data.eventId}_${Date.now()}`,
+        title: 'Event Update',
+        body: `${data.title} — ${message}`,
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+    };
+    socket.on('event:status', handler);
+    return () => { socket.off('event:status', handler); };
   }, [ready, user]);
 
   const requireAuth = () => {
