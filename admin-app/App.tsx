@@ -355,6 +355,7 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
       </View>
     </Modal>
   );
+}
 function EventsManagementScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
