@@ -928,42 +928,47 @@ function AdminTabs({ admin, onLogout }: { admin: any; onLogout: () => void }) {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
       }}
     >
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="ðŸ“Š" focused={focused} />,
+          tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ focused }) => <TabIcon icon="📊" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="EventsTab"
         component={EventsStack}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="ðŸ“…" focused={focused} />,
+          tabBarLabel: 'Events',
+          tabBarIcon: ({ focused }) => <TabIcon icon="📅" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="ClubsTab"
         component={ClubsStack}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="ðŸ " focused={focused} />,
+          tabBarLabel: 'Clubs',
+          tabBarIcon: ({ focused }) => <TabIcon icon="👥" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="Payments"
         component={PaymentsManagementScreen}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="ðŸ’³" focused={focused} />,
+          tabBarLabel: 'Payments',
+          tabBarIcon: ({ focused }) => <TabIcon icon="💳" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="Settings"
         children={() => <SettingsScreen admin={admin} onLogout={onLogout} />}
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon="âš™ï¸" focused={focused} />,
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ focused }) => <TabIcon icon="⚙️" focused={focused} />,
         }}
       />
     </Tab.Navigator>

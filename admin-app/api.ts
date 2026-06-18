@@ -94,11 +94,15 @@ class AdminApi {
   }
 
   async updateEvent(id: string, updates: Partial<Event>): Promise<void> {
-    await fetch(`${BASE_URL}/events/${id}`, {
+    const res = await fetch(`${BASE_URL}/events/${id}`, {
       method: 'PUT',
       headers: this.authHeaders(),
       body: JSON.stringify(updates),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to update event' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
   }
 
   async publishEvent(id: string): Promise<void> {
