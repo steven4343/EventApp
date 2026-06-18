@@ -94,11 +94,25 @@ function DashboardScreen() {
   );
 }
 
+const CATEGORIES = ['Music Concert', 'Conference', 'Sports', 'Church Event', 'Community', 'Workshop'];
+const LOCATIONS = [
+  'UNZA Great Hall, Lusaka',
+  'Mulungushi International Conference Centre, Lusaka',
+  'Cavendish University Grounds, Lusaka',
+  'Bible Gospel Church in Africa, Ndola',
+];
+const TIME_SLOTS = [
+  '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00',
+  '18:00', '19:00', '20:00',
+];
+
 function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
+  const [customLocation, setCustomLocation] = useState('');
   const [category, setCategory] = useState('');
   const [clubId, setClubId] = useState('');
   const [description, setDescription] = useState('');
@@ -109,6 +123,10 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
   const [submitting, setSubmitting] = useState(false);
   const [clubs, setClubs] = useState<any[]>([]);
   const [showClubPicker, setShowClubPicker] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showCustomLocation, setShowCustomLocation] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -157,7 +175,7 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
   const finalImage = imageData || imageUrl || 'https://picsum.photos/seed/event/400';
 
   const handleCreate = async () => {
-    if (!title || !date || !location) {
+    if (!title || !date || !(location || customLocation)) {
       Alert.alert('Error', 'Title, date, and location are required');
       return;
     }
@@ -168,7 +186,8 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
     setSubmitting(true);
     try {
       await adminApi.createEvent({
-        title, date, time: time || 'TBD', location,
+        title, date, time: time || 'TBD',
+        location: location || customLocation,
         category: category || 'General',
         clubId: clubId || undefined,
         description: description || '',
@@ -180,8 +199,9 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
       Alert.alert('Success', 'Event created');
       onCreated();
       onClose();
-      setTitle(''); setDate(''); setTime(''); setLocation('');
+      setTitle(''); setDate(''); setTime(''); setLocation(''); setCustomLocation('');
       setCategory(''); setClubId(''); setDescription(''); setPrice(''); setMaxCapacity(''); setImageUrl(''); setImageData('');
+      setShowCustomLocation(false);
     } catch (e) {
       Alert.alert('Error', 'Failed to create event');
     } finally {
@@ -189,18 +209,101 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
     }
   };
 
+  const renderPickerModal = (
+    titleText: string,
+    options: { label: string; value: string }[],
+    currentValue: string,
+    onSelect: (value: string) => void,
+    visibleState: boolean,
+    setVisible: (v: boolean) => void,
+  ) => (
+    <Modal visible={visibleState} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>{titleText}</Text>
+          <ScrollView>
+            {options.map(opt => (
+              <TouchableOpacity
+                key={opt.value}
+                style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: currentValue === opt.value ? '#dbeafe' : 'transparent' }}
+                onPress={() => { onSelect(opt.value); setVisible(false); }}
+              >
+                <Text style={{ fontSize: 16, color: '#1e293b' }}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity style={[styles.cancelButton, { marginTop: 12 }]} onPress={() => setVisible(false)}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const finalLocation = location || customLocation || '';
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <ScrollView style={styles.modalContent}>
           <Text style={styles.modalTitle}>Create Event</Text>
+
           <TextInput style={styles.input} placeholder="Title *" value={title} onChangeText={setTitle} />
           <TextInput style={styles.input} placeholder="Date (YYYY-MM-DD) * e.g. 2026-06-12" value={date} onChangeText={setDate} />
-          <TextInput style={styles.input} placeholder="Time (e.g. 7:00 PM)" value={time} onChangeText={setTime} />
-          <TextInput style={styles.input} placeholder="Location *" value={location} onChangeText={setLocation} />
-          <TextInput style={styles.input} placeholder="Category" value={category} onChangeText={setCategory} />
+
+          <TouchableOpacity style={styles.input} onPress={() => setShowTimePicker(true)}>
+            <Text style={{ color: time ? '#1e293b' : '#94a3b8', fontSize: 16 }}>
+              {time || 'Select Time *'}
+            </Text>
+          </TouchableOpacity>
+          {renderPickerModal('Select Time', TIME_SLOTS.map(t => ({ label: t, value: t })), time, setTime, showTimePicker, setShowTimePicker)}
+
+          <TouchableOpacity style={styles.input} onPress={() => setShowLocationPicker(true)}>
+            <Text style={{ color: finalLocation ? '#1e293b' : '#94a3b8', fontSize: 16 }}>
+              {finalLocation || 'Select Location *'}
+            </Text>
+          </TouchableOpacity>
+          <Modal visible={showLocationPicker} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Location</Text>
+                <ScrollView>
+                  {LOCATIONS.map(loc => (
+                    <TouchableOpacity
+                      key={loc}
+                      style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: location === loc ? '#dbeafe' : 'transparent' }}
+                      onPress={() => { setLocation(loc); setCustomLocation(''); setShowCustomLocation(false); setShowLocationPicker(false); }}
+                    >
+                      <Text style={{ fontSize: 16, color: '#1e293b' }}>{loc}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: showCustomLocation ? '#dbeafe' : 'transparent' }}
+                    onPress={() => { setShowCustomLocation(true); setLocation(''); setShowLocationPicker(false); }}
+                  >
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#2563eb' }}>+ Custom Location</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+                <TouchableOpacity style={[styles.cancelButton, { marginTop: 12 }]} onPress={() => setShowLocationPicker(false)}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+          {showCustomLocation && (
+            <TextInput style={styles.input} placeholder="Enter custom location *" value={customLocation} onChangeText={setCustomLocation} />
+          )}
+
+          <TouchableOpacity style={styles.input} onPress={() => setShowCategoryPicker(true)}>
+            <Text style={{ color: category ? '#1e293b' : '#94a3b8', fontSize: 16 }}>
+              {category || 'Select Category'}
+            </Text>
+          </TouchableOpacity>
+          {renderPickerModal('Select Category', CATEGORIES.map(c => ({ label: c, value: c })), category, setCategory, showCategoryPicker, setShowCategoryPicker)}
+
           <TextInput style={styles.input} placeholder="Price (0 for free)" value={price} onChangeText={setPrice} keyboardType="numeric" />
           <TextInput style={styles.input} placeholder="Max Capacity" value={maxCapacity} onChangeText={setMaxCapacity} keyboardType="numeric" />
+
           <TouchableOpacity style={styles.input} onPress={() => setShowClubPicker(true)}>
             <Text style={{ color: clubId ? '#1e293b' : '#94a3b8', fontSize: 16 }}>
               {clubId ? (clubs.find(c => c.id === clubId)?.name || 'Selected Club') : 'Select Club (optional)'}
@@ -227,13 +330,14 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
               </View>
             </View>
           </Modal>
+
           <Text style={styles.imageLabel}>Event Photo</Text>
           <View style={styles.imagePickerRow}>
             <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
-              <Text style={styles.imagePickerText}>ðŸ“ Gallery</Text>
+              <Text style={styles.imagePickerText}>📁 Gallery</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.imagePickerButton} onPress={takePhoto}>
-              <Text style={styles.imagePickerText}>ðŸ“· Camera</Text>
+              <Text style={styles.imagePickerText}>📷 Camera</Text>
             </TouchableOpacity>
             <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder="Or paste URL" value={imageUrl} onChangeText={setImageUrl} />
           </View>
@@ -251,14 +355,12 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
       </View>
     </Modal>
   );
-}
-
 function EventsManagementScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
-  const categories = ['', 'Academic', 'Cultural', 'Hackathon', 'Social', 'Sports'];
+  const categories = ['', 'Music Concert', 'Conference', 'Sports', 'Church Event', 'Community', 'Workshop'];
 
   const loadEvents = useCallback(async () => {
     try {
