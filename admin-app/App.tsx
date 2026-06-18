@@ -94,7 +94,7 @@ function DashboardScreen() {
   );
 }
 
-const CATEGORIES = ['Music Concert', 'Conference', 'Sports', 'Church Event', 'Community', 'Workshop'];
+const CATEGORIES = ['All', 'Social', 'Cultural', 'Sports', 'Academic', 'Entertainment', 'Partnership'];
 const LOCATIONS = [
   'UNZA Great Hall, Lusaka',
   'Mulungushi International Conference Centre, Lusaka',
