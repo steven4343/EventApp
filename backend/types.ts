@@ -87,6 +87,7 @@ export interface UserReview {
   rating: number;
   comment: string;
   createdAt: string;
+  userName?: string;
 }
 
 export interface Image {

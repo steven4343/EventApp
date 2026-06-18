@@ -105,6 +105,11 @@ class AdminApi {
     return res.json();
   }
 
+  async getEventReviews(eventId: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/events/${eventId}/reviews`, { headers: this.authHeaders() });
+    return res.json();
+  }
+
   async updateEvent(id: string, updates: Partial<Event>): Promise<void> {
     const res = await this.checkAuth(await fetch(`${BASE_URL}/events/${id}`, {
       method: 'PUT',

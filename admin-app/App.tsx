@@ -426,6 +426,8 @@ function EventsManagementScreen() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [feedbackEvent, setFeedbackEvent] = useState<any>(null);
+  const [feedbackData, setFeedbackData] = useState<any>(null);
   const categories = ['', 'Music Concert', 'Conference', 'Sports', 'Church Event', 'Community', 'Workshop'];
 
   const loadEvents = useCallback(async () => {
@@ -443,6 +445,16 @@ function EventsManagementScreen() {
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
+
+  const handleViewFeedback = async (event: any) => {
+    setFeedbackEvent(event);
+    try {
+      const data = await adminApi.getEventReviews(event.id);
+      setFeedbackData(data);
+    } catch {
+      setFeedbackData(null);
+    }
+  };
 
   const handlePublish = async (id: string) => {
     try {
@@ -532,10 +544,11 @@ function EventsManagementScreen() {
                   <Text style={styles.itemTitle}>{event.title}</Text>
                   <Text style={styles.itemDate}>{event.category} | {event.date} | {event.location}</Text>
                   <Text style={styles.itemMeta}>
-                    {event.attendees != null ? `${event.attendees}/${event.maxCapacity || 'âˆž'} tickets` : ''}
+                    {event.attendees != null ? `${event.attendees}/${event.maxCapacity || '∞'} tickets` : ''}
                     {event.publishedAt ? ` | Published: ${new Date(event.publishedAt).toLocaleDateString()}` : ''}
                     {event.updatedAt && event.updatedAt !== event.createdAt ? ` | Updated: ${new Date(event.updatedAt).toLocaleDateString()}` : ''}
                   </Text>
+                  <Text style={styles.itemRating}>★ {event.rating || 0} ({event.reviews || 0} reviews)</Text>
                 </View>
                 <Text style={[styles.itemStatus, getStatusStyle(event.status)]}>{event.status}</Text>
               </View>
@@ -553,6 +566,9 @@ function EventsManagementScreen() {
                 <TouchableOpacity style={styles.actionDelete} onPress={() => handleDelete(event.id)}>
                   <Text style={styles.actionTextDelete}>Delete</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.actionFeedback} onPress={() => handleViewFeedback(event)}>
+                  <Text style={styles.actionTextFeedback}>Feedback</Text>
+                </TouchableOpacity>
               </View>
             </View>
           ))
@@ -560,6 +576,46 @@ function EventsManagementScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
       <CreateEventModal visible={showCreate} onClose={() => setShowCreate(false)} onCreated={loadEvents} />
+      <Modal visible={!!feedbackEvent} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <ScrollView style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Feedback — {feedbackEvent?.title || ''}</Text>
+            {feedbackData ? (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <Text style={{ fontSize: 28, fontWeight: '700', color: '#f59e0b' }}>★ {feedbackData.stats.averageRating}</Text>
+                  <Text style={{ fontSize: 14, color: '#64748b' }}>({feedbackData.stats.totalReviews} reviews)</Text>
+                </View>
+                {feedbackData.stats.ratingDistribution.filter((d: any) => d.count > 0).map((d: any) => (
+                  <View key={d.stars} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Text style={{ fontSize: 14, color: '#64748b', width: 30 }}>{d.stars}★</Text>
+                    <View style={{ flex: 1, height: 8, backgroundColor: '#f1f5f9', borderRadius: 4 }}>
+                      <View style={{ width: `${(d.count / feedbackData.stats.totalReviews) * 100}%`, height: 8, backgroundColor: '#f59e0b', borderRadius: 4 }} />
+                    </View>
+                    <Text style={{ fontSize: 13, color: '#94a3b8' }}>{d.count}</Text>
+                  </View>
+                ))}
+                <View style={{ height: 16 }} />
+                {feedbackData.reviews.map((r: any) => (
+                  <View key={r.id} style={{ backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>{r.userName || 'Anonymous'}</Text>
+                      <Text style={{ fontSize: 14, color: '#f59e0b' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</Text>
+                    </View>
+                    {r.comment ? <Text style={{ fontSize: 14, color: '#475569' }}>{r.comment}</Text> : null}
+                    <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{new Date(r.createdAt).toLocaleDateString()}</Text>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <Text style={{ color: '#94a3b8', textAlign: 'center', paddingVertical: 20 }}>No feedback yet</Text>
+            )}
+            <TouchableOpacity style={[styles.cancelButton, { marginTop: 12 }]} onPress={() => { setFeedbackEvent(null); setFeedbackData(null); }}>
+              <Text style={styles.cancelText}>Close</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1502,6 +1558,23 @@ const styles = StyleSheet.create({
   statusCancelled: {
     backgroundColor: '#fee2e2',
     color: '#dc2626',
+  },
+  itemRating: {
+    fontSize: 12,
+    color: '#f59e0b',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  actionFeedback: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  actionTextFeedback: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563eb',
   },
   itemActions: {
     flexDirection: 'row',

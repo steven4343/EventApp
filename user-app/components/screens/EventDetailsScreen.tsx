@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Event } from '../../types';
 import { userApi } from '../../api';
@@ -17,6 +17,12 @@ export function EventDetailsScreen() {
   const [showRegistration, setShowRegistration] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savedLoading, setSavedLoading] = useState(false);
+  const [userRating, setUserRating] = useState(0);
+  const [userComment, setUserComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [eventReviews, setEventReviews] = useState<any[]>([]);
+  const [reviewStats, setReviewStats] = useState<any>(null);
 
   useEffect(() => {
     userApi.getEventById(eventId).then(data => {
@@ -28,6 +34,13 @@ export function EventDetailsScreen() {
       setIsSaved(isEventSaved);
     }).catch(() => {});
   }, [eventId]);
+
+  useEffect(() => {
+    userApi.getEventReviews(eventId).then(data => {
+      setEventReviews(data.reviews || []);
+      setReviewStats(data.stats);
+    }).catch(() => {});
+  }, [eventId, submitted]);
 
   const toggleSave = async () => {
     setSavedLoading(true);
@@ -43,6 +56,27 @@ export function EventDetailsScreen() {
       console.error('Failed to toggle save:', e);
     }
     setSavedLoading(false);
+  };
+
+  const isPastEvent = new Date(event.date) < new Date();
+
+  const handleSubmitReview = async () => {
+    if (userRating === 0) {
+      Alert.alert('Select Rating', 'Please select a star rating');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const result = await userApi.addReview(eventId, 'event', userRating, userComment);
+      if (result.event) setEvent(result.event);
+      setSubmitted(true);
+      setUserRating(0);
+      setUserComment('');
+      Alert.alert('Thank You!', 'Your feedback has been submitted');
+    } catch {
+      Alert.alert('Error', 'Failed to submit feedback');
+    }
+    setSubmitting(false);
   };
 
   if (loading) {
@@ -152,6 +186,57 @@ export function EventDetailsScreen() {
             <Text style={styles.sectionTitle}>About this event</Text>
             <Text style={styles.description}>{event.description}</Text>
           </View>
+
+          {isPastEvent && (
+            <View style={styles.feedbackSection}>
+              <Text style={styles.sectionTitle}>Feedback & Reviews</Text>
+              {reviewStats && (
+                <View style={styles.statsRow}>
+                  <Text style={styles.starsLarge}>★ {reviewStats.averageRating}</Text>
+                  <Text style={styles.statsText}>{reviewStats.totalReviews} review{reviewStats.totalReviews !== 1 ? 's' : ''}</Text>
+                </View>
+              )}
+              {eventReviews.length > 0 && (
+                <View style={styles.reviewsList}>
+                  {eventReviews.slice(0, 5).map(r => (
+                    <View key={r.id} style={styles.reviewItem}>
+                      <View style={styles.reviewHeader}>
+                        <Text style={styles.reviewerName}>{r.userName || 'Anonymous'}</Text>
+                        <Text style={styles.reviewStars}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</Text>
+                      </View>
+                      {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
+                    </View>
+                  ))}
+                </View>
+              )}
+              {!submitted && (
+                <View style={styles.feedbackForm}>
+                  <Text style={styles.feedbackLabel}>Rate this event</Text>
+                  <View style={styles.starPicker}>
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <TouchableOpacity key={n} onPress={() => setUserRating(n)}>
+                        <Text style={[styles.starOption, userRating >= n && styles.starSelected]}>★</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder="Share your thoughts (optional)"
+                    placeholderTextColor="#94a3b8"
+                    value={userComment}
+                    onChangeText={setUserComment}
+                    multiline
+                  />
+                  <TouchableOpacity style={styles.submitFeedbackButton} onPress={handleSubmitReview} disabled={submitting}>
+                    <Text style={styles.submitFeedbackText}>{submitting ? 'Submitting...' : 'Submit Feedback'}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {submitted && (
+                <Text style={styles.thankYouText}>✓ You've submitted feedback for this event</Text>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -295,6 +380,107 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 24,
     color: '#475569',
+  },
+  feedbackSection: {
+    marginTop: 24,
+    backgroundColor: '#f8fafc',
+    borderRadius: 20,
+    padding: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  starsLarge: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f59e0b',
+  },
+  statsText: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  reviewsList: {
+    marginBottom: 16,
+  },
+  reviewItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  reviewerName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  reviewStars: {
+    fontSize: 14,
+    color: '#f59e0b',
+  },
+  reviewComment: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 20,
+  },
+  feedbackForm: {
+    marginTop: 8,
+  },
+  feedbackLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  starPicker: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  starOption: {
+    fontSize: 32,
+    color: '#e2e8f0',
+  },
+  starSelected: {
+    color: '#f59e0b',
+  },
+  commentInput: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 12,
+  },
+  submitFeedbackButton: {
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  submitFeedbackText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  thankYouText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#16a34a',
+    textAlign: 'center',
+    marginTop: 8,
   },
   footer: {
     position: 'absolute',

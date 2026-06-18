@@ -326,6 +326,11 @@ class UserApi {
     return res.json();
   }
 
+  async getEventReviews(eventId: string) {
+    const res = await fetch(`${BASE_URL}/events/${eventId}/reviews`);
+    return res.json();
+  }
+
   async updateProfile(userId: string, updates: { name?: string; faculty?: string; year?: number; avatar?: string }) {
     const res = await fetch(`${BASE_URL}/users/${userId}`, {
       method: 'PUT',

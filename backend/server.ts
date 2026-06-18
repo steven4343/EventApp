@@ -912,7 +912,22 @@ app.post('/api/reviews', authenticate, async (req, res) => {
     createdAt: new Date().toISOString(),
   };
   await database.addReview(review);
-  res.status(201).json(review);
+  const updated = await database.getEventById(review.itemId);
+  res.status(201).json({ review, event: updated });
+});
+
+app.get('/api/events/:id/reviews', async (req, res) => {
+  const reviews = await database.getReviewsByEvent(req.params.id);
+  const event = await database.getEventById(req.params.id);
+  const avg = reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+  res.json({
+    reviews,
+    stats: {
+      averageRating: Math.round(avg * 10) / 10,
+      totalReviews: reviews.length,
+      ratingDistribution: [1, 2, 3, 4, 5].map(n => ({ stars: n, count: reviews.filter(r => r.rating === n).length })),
+    },
+  });
 });
 
 // ==================== DEBUG SEED ====================

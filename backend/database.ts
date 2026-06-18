@@ -283,10 +283,27 @@ class Database {
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [review.id, review.userId, review.itemId, review.itemType, review.rating, review.comment, review.createdAt]
     );
+    if (review.itemType === 'event') {
+      const agg = await pool.query(
+        `SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM user_reviews WHERE item_id = $1 AND item_type = 'event'`,
+        [review.itemId]
+      );
+      const avg = parseFloat(agg.rows[0].avg_rating) || 0;
+      const count = parseInt(agg.rows[0].count) || 0;
+      await this.updateEvent(review.itemId, { rating: Math.round(avg * 10) / 10, reviews: count });
+    }
   }
 
   async getReviewsByUser(userId: string): Promise<UserReview[]> {
     const { rows } = await pool.query('SELECT * FROM user_reviews WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
+    return rows.map(mapUserReview);
+  }
+
+  async getReviewsByEvent(eventId: string): Promise<UserReview[]> {
+    const { rows } = await pool.query(
+      `SELECT ur.*, u.name as user_name FROM user_reviews ur LEFT JOIN users u ON ur.user_id = u.id WHERE ur.item_id = $1 AND ur.item_type = 'event' ORDER BY ur.created_at DESC`,
+      [eventId]
+    );
     return rows.map(mapUserReview);
   }
 
@@ -516,6 +533,7 @@ function mapUserReview(row: any): UserReview {
     rating: row.rating,
     comment: row.comment,
     createdAt: row.created_at,
+    userName: row.user_name,
   };
 }
 
