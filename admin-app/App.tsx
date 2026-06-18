@@ -1014,6 +1014,7 @@ export default function App() {
   useEffect(() => {
     (async () => {
       await adminApi.init();
+      adminApi.onUnauthorized = doLogout;
       const currentAdmin = adminApi.getCurrentAdmin();
       if (currentAdmin) {
         setAdmin(currentAdmin);
