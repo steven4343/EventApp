@@ -9,9 +9,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, Tex
 import * as ImagePicker from 'expo-image-picker';
 
 import { AdminLoginScreen } from './components/screens/AdminLoginScreen';
-import NotificationBell from './components/NotificationBell';
+import NotificationDropdown from './components/NotificationDropdown';
 import { adminApi } from './api';
 import { connectSocket, disconnectSocket } from './services/socket';
+import { addNotification } from './utils/notificationStore';
 
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 const WARNING_BEFORE = 60 * 1000;
@@ -1043,6 +1044,34 @@ export default function App() {
     return () => subscription.remove();
   }, [admin, resetInactivityTimer, doLogout]);
 
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const notifiedIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!admin) return;
+    const checkNewEvents = async () => {
+      try {
+        const events = await adminApi.getEvents('Published');
+        for (const event of events) {
+          if (notifiedIds.current.has(event.id)) continue;
+          notifiedIds.current.add(event.id);
+          await addNotification({
+            id: `notif_${event.id}_${Date.now()}`,
+            title: 'New Event Posted',
+            body: event.title,
+            timestamp: new Date().toISOString(),
+            read: false,
+          });
+        }
+      } catch {}
+    };
+    checkNewEvents();
+    pollingRef.current = setInterval(checkNewEvents, 60000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [admin]);
+
   const handleLogin = (loggedInAdmin: any) => {
     setAdmin(loggedInAdmin);
     if (loggedInAdmin?.id) {
@@ -1074,7 +1103,7 @@ export default function App() {
           <View style={{ flex: 1 }}>
             <AdminTabs admin={admin} onLogout={handleLogout} />
             <View style={styles.notifFloating}>
-              <NotificationBell userId={admin.id} />
+              <NotificationDropdown />
             </View>
           </View>
         ) : (
