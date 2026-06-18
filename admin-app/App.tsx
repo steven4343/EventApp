@@ -110,6 +110,10 @@ const TIME_SLOTS = [
 function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth() + 1);
+  const [pickerDay, setPickerDay] = useState(new Date().getDate());
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
   const [customLocation, setCustomLocation] = useState('');
@@ -249,7 +253,58 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
           <Text style={styles.modalTitle}>Create Event</Text>
 
           <TextInput style={styles.input} placeholder="Title *" value={title} onChangeText={setTitle} />
-          <TextInput style={styles.input} placeholder="Date (YYYY-MM-DD) * e.g. 2026-06-12" value={date} onChangeText={setDate} />
+          <TouchableOpacity style={styles.input} onPress={() => { const d = date ? new Date(date) : new Date(); setPickerYear(d.getFullYear()); setPickerMonth(d.getMonth() + 1); setPickerDay(d.getDate()); setShowDatePicker(true); }}>
+            <Text style={{ color: date ? '#1e293b' : '#94a3b8', fontSize: 16 }}>
+              {date || 'Select Date *'}
+            </Text>
+          </TouchableOpacity>
+          <Modal visible={showDatePicker} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Date</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 16 }}>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b', marginBottom: 8 }}>Year</Text>
+                    <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                      {Array.from({ length: 11 }, (_, i) => 2020 + i).map(y => (
+                        <TouchableOpacity key={y} style={{ paddingVertical: 10, paddingHorizontal: 16, backgroundColor: pickerYear === y ? '#dbeafe' : 'transparent', borderRadius: 8 }} onPress={() => setPickerYear(y)}>
+                          <Text style={{ fontSize: 18, fontWeight: pickerYear === y ? '700' : '400', color: pickerYear === y ? '#2563eb' : '#1e293b', textAlign: 'center' }}>{y}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b', marginBottom: 8 }}>Month</Text>
+                    <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                        <TouchableOpacity key={m} style={{ paddingVertical: 10, paddingHorizontal: 16, backgroundColor: pickerMonth === m ? '#dbeafe' : 'transparent', borderRadius: 8 }} onPress={() => setPickerMonth(m)}>
+                          <Text style={{ fontSize: 18, fontWeight: pickerMonth === m ? '700' : '400', color: pickerMonth === m ? '#2563eb' : '#1e293b', textAlign: 'center' }}>{String(m).padStart(2, '0')}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b', marginBottom: 8 }}>Day</Text>
+                    <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                        <TouchableOpacity key={d} style={{ paddingVertical: 10, paddingHorizontal: 16, backgroundColor: pickerDay === d ? '#dbeafe' : 'transparent', borderRadius: 8 }} onPress={() => setPickerDay(d)}>
+                          <Text style={{ fontSize: 18, fontWeight: pickerDay === d ? '700' : '400', color: pickerDay === d ? '#2563eb' : '#1e293b', textAlign: 'center' }}>{String(d).padStart(2, '0')}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                </View>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity style={styles.cancelButton} onPress={() => setShowDatePicker(false)}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.submitButton} onPress={() => { setDate(`${pickerYear}-${String(pickerMonth).padStart(2, '0')}-${String(pickerDay).padStart(2, '0')}`); setShowDatePicker(false); }}>
+                    <Text style={styles.submitText}>Confirm</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
 
           <TouchableOpacity style={styles.input} onPress={() => setShowTimePicker(true)}>
             <Text style={{ color: time ? '#1e293b' : '#94a3b8', fontSize: 16 }}>
