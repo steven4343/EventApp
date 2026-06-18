@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { categories, Event } from '../../types';
 import { userApi } from '../../api';
 import { EventCard } from './EventCard';
-import { loadNotifications, getCached, getUnreadCount, markAllRead, AppNotification } from '../../utils/notificationStore';
+import { loadNotifications, getCached, getUnreadCount, markAllRead, addNotification, AppNotification } from '../../utils/notificationStore';
 import { getSocket } from '../../services/socket';
 
 export function EventListScreen() {
@@ -38,7 +38,20 @@ export function EventListScreen() {
     if (!socket) return;
     const handler = () => refreshNotifs();
     socket.on('notification', handler);
-    return () => { socket.off('notification', handler); };
+    const statusHandler = (data: { eventId: string; title: string; status: string; timestamp: string }) => {
+      const message = data.status === 'Published' ? 'New event published' : `Event ${data.status.toLowerCase()}`;
+      addNotification({
+        id: `notif_${data.eventId}_${Date.now()}`,
+        title: 'Event Update',
+        body: `${data.title} — ${message}`,
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      refreshNotifs();
+      userApi.getEvents().then(setEvents);
+    };
+    socket.on('event:status', statusHandler);
+    return () => { socket.off('notification', handler); socket.off('event:status', statusHandler); };
   }, [refreshNotifs]);
 
   useEffect(() => {

@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +18,11 @@ import {
 } from './auth';
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: { origin: true, credentials: true },
+});
+
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cuz-events-jwt-secret-dev';
@@ -27,6 +34,23 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 app.use('/images', express.static('public/images'));
+
+// Socket.IO: track connected users
+io.on('connection', (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+  socket.on('register', (userId: string) => {
+    socket.data.userId = userId;
+    socket.join(`user:${userId}`);
+    console.log(`Socket ${socket.id} registered as user ${userId}`);
+  });
+  socket.on('disconnect', () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
+});
+
+function emitStatusChange(event: { id: string; title: string; status: string }) {
+  io.emit('event:status', { eventId: event.id, title: event.title, status: event.status, timestamp: new Date().toISOString() });
+}
 
 database.initialize().catch(console.error);
 
@@ -155,7 +179,7 @@ async function seedImages() {
   }
 }
 
-app.listen(PORT, '0.0.0.0', async () => {
+httpServer.listen(PORT, '0.0.0.0', async () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   await seedDB();
 });
@@ -423,6 +447,7 @@ app.post('/api/events', authenticate, async (req, res) => {
     await database.addEvent(event);
     if (event.status === 'Published') {
       sendPushNotifications('New Event Posted', event.title);
+      emitStatusChange({ id: event.id, title: event.title, status: 'Published' });
     }
     res.status(201).json(event);
   } catch (e: any) {
@@ -467,6 +492,9 @@ app.put('/api/events/:id', authenticate, async (req, res) => {
     if (event) {
       if (before.status !== 'Published' && event.status === 'Published') {
         sendPushNotifications('New Event Posted', event.title);
+      }
+      if (before.status !== event.status) {
+        emitStatusChange({ id: event.id, title: event.title, status: event.status });
       }
       res.json(event);
     } else {

@@ -8,5 +8,8 @@
   "scripts": {
     "start": "npm run -w backend start",
     "dev": "npm run -w backend dev"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.3"
   }
 }
