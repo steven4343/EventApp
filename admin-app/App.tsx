@@ -127,7 +127,6 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
   const [submitting, setSubmitting] = useState(false);
   const [clubs, setClubs] = useState<any[]>([]);
   const [showClubPicker, setShowClubPicker] = useState(false);
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showCustomLocation, setShowCustomLocation] = useState(false);
@@ -349,12 +348,23 @@ function CreateEventModal({ visible, onClose, onCreated }: { visible: boolean; o
             <TextInput style={styles.input} placeholder="Enter custom location *" value={customLocation} onChangeText={setCustomLocation} />
           )}
 
-          <TouchableOpacity style={styles.input} onPress={() => setShowCategoryPicker(true)}>
-            <Text style={{ color: category ? '#1e293b' : '#94a3b8', fontSize: 16 }}>
-              {category || 'Select Category'}
-            </Text>
-          </TouchableOpacity>
-          {renderPickerModal('Select Category', CATEGORIES.map(c => ({ label: c, value: c })), category, setCategory, showCategoryPicker, setShowCategoryPicker)}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
+            <TouchableOpacity
+              style={[styles.filterChip, !category && styles.filterChipActive]}
+              onPress={() => setCategory('')}
+            >
+              <Text style={[styles.filterText, !category && styles.filterTextActive]}>Any</Text>
+            </TouchableOpacity>
+            {CATEGORIES.map(c => (
+              <TouchableOpacity
+                key={c}
+                style={[styles.filterChip, category === c && styles.filterChipActive]}
+                onPress={() => setCategory(category === c ? '' : c)}
+              >
+                <Text style={[styles.filterText, category === c && styles.filterTextActive]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
           <TextInput style={styles.input} placeholder="Price (0 for free)" value={price} onChangeText={setPrice} keyboardType="numeric" />
           <TextInput style={styles.input} placeholder="Max Capacity" value={maxCapacity} onChangeText={setMaxCapacity} keyboardType="numeric" />
