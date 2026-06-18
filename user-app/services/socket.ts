@@ -9,7 +9,10 @@ export function connectSocket(userId: string): Socket {
 
   socket = io(SOCKET_URL, {
     query: { userId },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
+    reconnectionAttempts: 3,
+    reconnectionDelay: 5000,
+    timeout: 10000,
   });
 
   socket.on('connect', () => {

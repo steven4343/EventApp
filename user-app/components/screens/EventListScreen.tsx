@@ -6,6 +6,7 @@ import { categories, Event } from '../../types';
 import { userApi } from '../../api';
 import { EventCard } from './EventCard';
 import { loadNotifications, getCached, getUnreadCount, markAllRead, AppNotification } from '../../utils/notificationStore';
+import { getSocket } from '../../services/socket';
 
 export function EventListScreen() {
   const navigation = useNavigation<any>();
@@ -30,6 +31,14 @@ export function EventListScreen() {
     refreshNotifs();
     const interval = setInterval(refreshNotifs, 30000);
     return () => clearInterval(interval);
+  }, [refreshNotifs]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const handler = () => refreshNotifs();
+    socket.on('notification', handler);
+    return () => { socket.off('notification', handler); };
   }, [refreshNotifs]);
 
   useEffect(() => {
