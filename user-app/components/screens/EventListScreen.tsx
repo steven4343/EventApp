@@ -20,6 +20,7 @@ export function EventListScreen() {
   const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef<View>(null);
   const notifRef = useRef<View>(null);
+  const notifiedIds = useRef<Set<string>>(new Set());
 
   const refreshNotifs = useCallback(async () => {
     await loadNotifications();
@@ -58,9 +59,33 @@ export function EventListScreen() {
   useEffect(() => {
     userApi.getEvents().then(data => {
       setEvents(data);
+      data.forEach(e => notifiedIds.current.add(e.id));
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    const checkNewPublished = async () => {
+      try {
+        const all = await userApi.getEvents();
+        for (const event of all) {
+          if (notifiedIds.current.has(event.id)) continue;
+          notifiedIds.current.add(event.id);
+          await addNotification({
+            id: `notif_${event.id}_${Date.now()}`,
+            title: 'New Event Posted',
+            body: event.title,
+            timestamp: new Date().toISOString(),
+            read: false,
+            eventId: event.id,
+          });
+          refreshNotifs();
+        }
+      } catch {}
+    };
+    const interval = setInterval(checkNewPublished, 30000);
+    return () => clearInterval(interval);
+  }, [refreshNotifs]);
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
