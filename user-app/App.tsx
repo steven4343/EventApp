@@ -1,15 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect, useRef } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, StyleSheet, AppState, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { requestPermissions, getExpoPushToken, getLastCheckTime, setLastCheckTime, notifyNewEvent } from './utils/notifications';
 import { addNotification } from './utils/notificationStore';
 import { getSocket } from './services/socket';
 import { userApi } from './api';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { LoginScreen } from './components/screens/LoginScreen';
 import { onRedirectToken, checkRedirectResult } from './services/googleAuth';
 import { EventListScreen } from './components/screens/EventListScreen';
@@ -123,10 +126,19 @@ function HomeTabs({ requireAuth }: { requireAuth: () => void }) {
 
 function AppContent() {
   const { user, googleSignIn } = useAuth();
+  const { isDark } = useTheme();
+  const { t } = useLanguage();
   const [ready, setReady] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [notifsEnabled, setNotifsEnabled] = useState(true);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastEventIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    AsyncStorage.getItem('cuz_events_notifications').then(v => {
+      if (v) setNotifsEnabled(v === 'true');
+    });
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -152,7 +164,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if (!ready || !user) return;
+    if (!ready || !user || !notifsEnabled) return;
     requestPermissions().then(async () => {
       const token = await getExpoPushToken();
       if (token) await userApi.registerPushToken(token);
@@ -243,10 +255,18 @@ function AppContent() {
     );
   }
 
+  const navTheme = isDark ? {
+    ...DarkTheme,
+    colors: { ...DarkTheme.colors, background: '#0f172a', card: '#1e293b', text: '#f1f5f9', border: '#334155', primary: '#60a5fa' },
+  } : {
+    ...DefaultTheme,
+    colors: { ...DefaultTheme.colors, background: '#f8fafc', card: '#fff', text: '#1e293b', border: '#e2e8f0', primary: '#2563eb' },
+  };
+
   return (
-    <View style={{ flex: 1 }}>
-      <NavigationContainer>
-        <StatusBar style="auto" />
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0f172a' : '#f8fafc' }}>
+      <NavigationContainer theme={navTheme}>
+        <StatusBar style={isDark ? 'light' : 'auto'} />
         {showLogin ? (
           <LoginScreen onCancel={() => setShowLogin(false)} />
         ) : (
@@ -260,7 +280,11 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <LanguageProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

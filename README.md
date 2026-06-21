@@ -27,6 +27,8 @@ Supports **mobile** (Expo), **web** (react-native-web), and **admin dashboard** 
 - **Notifications** — Bell dropdown on Events screen; real-time alerts via Socket.IO for new/published events; 30s polling for backend-published events; 24-hour auto-expiry of stored notifications; pressable notifications navigate to EventDetails
 - **Feedback Module** — Past events (date passed) show a feedback section with 5-star rating picker + optional comment; submitted feedback updates the event's aggregate rating and review count immediately
 - **User Profile** — Edit profile, change password, settings with theme toggle
+- **Settings** — Dark/Light mode (persisted), notification toggle, multi-language support (English, French, Portuguese, Swahili)
+- **Dark Mode** — Full dark theme across all screens, respects system navigation theme
 - **Authentication** — Google OAuth (web + mobile) + email/password + JWT session
 - **Recommendations** — Featured & highest-rated events
 
@@ -55,12 +57,22 @@ Supports **mobile** (Expo), **web** (react-native-web), and **admin dashboard** 
 1. **🔴 Redeploy Backend on Railway** — The Socket.IO dependency was added to `package.json` but the Railway service hasn't been redeployed. Without this, real-time notifications and socket events won't work.
 2. **🔴 Redeploy Frontend on Vercel** — Latest notification, feedback, and UI changes need a fresh `npx expo export --platform web` + deploy.
 3. **Push Notifications** — Expo push tokens are registered but never triggered. Backend needs to call Expo Push API when events are published.
-4. **Feedback Prompt** — The spec calls for an automatic notification after an event's scheduled end time. Currently feedback is shown manually on EventDetails for past events — no push/local notification yet.
-5. **Registered-user-only review** — Currently any user can review any past event. The spec says only registered attendees should get a prompt. `user_reviews` table has no attendance check.
-6. **Tests** — No unit/integration tests exist for backend or frontend.
-7. **CI/CD** — No automated deployment pipeline. Manual build + deploy for Railway and Vercel.
-8. **Error Boundaries** — No React error boundaries or global crash reporting.
-9. **Web Socket Transport** — Socket.IO on web uses long-polling (WebSocket not available); verify stability.
+4. **Registered-user-only review** — Currently any user can review any past event. The spec says only registered attendees should get a prompt. `user_reviews` table has no attendance check.
+5. **Tests** — No unit/integration tests exist for backend or frontend.
+6. **CI/CD** — No automated deployment pipeline. Manual build + deploy for Railway and Vercel.
+7. **Error Boundaries** — No React error boundaries or global crash reporting.
+8. **Web Socket Transport** — Socket.IO on web uses long-polling (WebSocket not available); verify stability.
+
+## ✅ Recent Fixes & Features
+
+- **Null club status crash** — `api.ts` now guards against null club status before calling `.toLowerCase()`
+- **Infinite loading fix** — `ClubDetailsScreen` and `EventDetailsScreen` now have proper error handling with retry
+- **Past event registration hidden** — Past events no longer show the Register button; only feedback/reviews shown
+- **Socket URL fix** — Socket.IO now connects to Railway backend instead of `localhost:3001`
+- **Dark Mode** — Fully functional dark/light theme toggle saved to AsyncStorage, applied across all screens
+- **Notification toggle** — Disabling notifications stops push token registration and polling
+- **Multi-language support** — English, French, Portuguese, Swahili translations for all screens
+- **Settings overhaul** — All settings (theme, notifications, language) now persist and work
 
 ---
 
@@ -152,15 +164,17 @@ cd admin-app && npm install && npx expo start
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
+|---|---|---|
 | **Mobile/Web Frontend** | React Native (Expo), react-native-web |
 | **Admin Dashboard** | React Native (Expo) |
 | **Navigation** | React Navigation (stack + bottom tabs) |
+| **Theming** | React Context + AsyncStorage (dark/light mode) |
+| **i18n** | Custom React Context + translation dictionaries (EN, FR, PT, SW) |
 | **Backend** | Express.js, TypeScript |
 | **Database** | PostgreSQL (Neon/ Railway) |
 | **Real-time** | Socket.IO (polling + WebSocket transport) |
 | **Auth** | JWT, Google OAuth 2.0, Firebase Auth |
-| **Storage** | AsyncStorage (notifications), PostgreSQL (all data) |
+| **Storage** | AsyncStorage (settings, notifications), PostgreSQL (all data) |
 | **Hosting** | Railway (backend), Vercel (frontend) |
 
 ---
