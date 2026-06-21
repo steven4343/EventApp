@@ -27,6 +27,7 @@ export function EventDetailsScreen() {
   useEffect(() => {
     userApi.getEventById(eventId).then(data => {
       setEvent(data);
+    }).catch(() => {}).finally(() => {
       setLoading(false);
     });
     userApi.getSavedEvents().then(saved => {
@@ -57,8 +58,6 @@ export function EventDetailsScreen() {
     }
     setSavedLoading(false);
   };
-
-  const isPastEvent = new Date(event.date) < new Date();
 
   const handleSubmitReview = async () => {
     if (userRating === 0) {
@@ -94,6 +93,8 @@ export function EventDetailsScreen() {
       </View>
     );
   }
+
+  const isPastEvent = new Date(event.date) < new Date();
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);

@@ -228,7 +228,7 @@ class UserApi {
       meetingTime: c.meetingTime,
       meetingLocation: c.meetingLocation,
       leaders: c.leaders,
-      status: c.status.toLowerCase() as 'active' | 'pending' | 'inactive',
+      status: (c.status || 'active').toLowerCase() as 'active' | 'pending' | 'inactive',
     }));
   }
 
@@ -246,7 +246,7 @@ class UserApi {
       meetingTime: c.meetingTime,
       meetingLocation: c.meetingLocation,
       leaders: c.leaders,
-      status: c.status.toLowerCase() as 'active' | 'pending' | 'inactive',
+      status: (c.status || 'active').toLowerCase() as 'active' | 'pending' | 'inactive',
     };
   }
 

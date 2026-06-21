@@ -30,13 +30,19 @@ export function ClubDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [membership, setMembership] = useState<{ role: string } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {
-    const data = await userApi.getClubForScreenById(clubId);
-    setClub(data);
-    const mem = await userApi.getClubMembership(clubId);
-    setMembership(mem);
-    setLoading(false);
+    try {
+      const data = await userApi.getClubForScreenById(clubId);
+      setClub(data);
+      const mem = await userApi.getClubMembership(clubId);
+      setMembership(mem);
+    } catch (e) {
+      setError('Failed to load club details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -71,6 +77,17 @@ export function ClubDetailsScreen() {
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); setError(null); loadData(); }}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -404,5 +421,17 @@ const styles = StyleSheet.create({
   center: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
