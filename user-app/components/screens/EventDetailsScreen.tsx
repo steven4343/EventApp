@@ -241,15 +241,17 @@ export function EventDetailsScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <View style={styles.priceContainer}>
-          <Text style={styles.priceLabel}>Price</Text>
-          <Text style={styles.priceValue}>
-            {event.price === 0 ? 'Free' : `K${event.price}`}
-          </Text>
+      {!isPastEvent && (
+        <View style={styles.footer}>
+          <View style={styles.priceContainer}>
+            <Text style={styles.priceLabel}>Price</Text>
+            <Text style={styles.priceValue}>
+              {event.price === 0 ? 'Free' : `K${event.price}`}
+            </Text>
+          </View>
+          <Button style={styles.registerButton} onPress={() => setShowRegistration(true)}>Register Now</Button>
         </View>
-        <Button style={styles.registerButton} onPress={() => setShowRegistration(true)}>Register Now</Button>
-      </View>
+      )}
 
       <RegistrationModal
         visible={showRegistration}
