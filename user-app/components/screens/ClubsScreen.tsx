@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Club } from '../../types';
 import { userApi } from '../../api';
 import { normalizeImage } from '../../utils/image';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const categoryColors: { [key: string]: string } = {
   'Health & Wellness': '#10b981',
@@ -18,6 +20,8 @@ const categoryColors: { [key: string]: string } = {
 
 export function ClubsScreen() {
   const navigation = useNavigation<any>();
+  const { isDark, colors } = useTheme();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -49,23 +53,23 @@ export function ClubsScreen() {
     const categoryColor = categoryColors[item.category] || '#6b7280';
     
     return (
-      <TouchableOpacity style={styles.card} onPress={() => handleClubPress(item.id)} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.card, { backgroundColor: colors.card }]} onPress={() => handleClubPress(item.id)} activeOpacity={0.7}>
         <View style={styles.cardContent}>
           <Image source={normalizeImage(item.image)} style={styles.clubImage} resizeMode="contain" />
           <View style={styles.clubInfo}>
-            <Text style={styles.clubName}>{item.name}</Text>
-            <Text style={styles.description} numberOfLines={2}>{item.shortDescription}</Text>
-            <Text style={styles.membersText}>👥 {item.members} members</Text>
+            <Text style={[styles.clubName, { color: colors.text }]}>{item.name}</Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={2}>{item.shortDescription}</Text>
+            <Text style={[styles.membersText, { color: colors.textSecondary }]}>👥 {item.members} {t('clubs.members')}</Text>
           </View>
         </View>
-        <View style={styles.meetingInfo}>
-          <Text style={styles.meetingLabel}>📅 {item.meetingTime}</Text>
-          <Text style={styles.meetingLabel}>📍 {item.meetingLocation}</Text>
+        <View style={[styles.meetingInfo, { backgroundColor: colors.background }]}>
+          <Text style={[styles.meetingLabel, { color: colors.textSecondary }]}>📅 {item.meetingTime}</Text>
+          <Text style={[styles.meetingLabel, { color: colors.textSecondary }]}>📍 {item.meetingLocation}</Text>
         </View>
-        <View style={styles.leadersSection}>
-          <Text style={styles.leadersTitle}>Club Leaders:</Text>
+        <View style={[styles.leadersSection, { borderTopColor: colors.border }]}>
+          <Text style={[styles.leadersTitle, { color: colors.text }]}>{t('clubs.clubLeaders')}:</Text>
           {item.leaders.map((leader, index) => (
-            <Text key={index} style={styles.leaderText}>
+            <Text key={index} style={[styles.leaderText, { color: colors.textSecondary }]}>
               • {leader.name} ({leader.role})
             </Text>
           ))}
@@ -76,55 +80,55 @@ export function ClubsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
         <View style={styles.headerTopRow}>
           <View style={styles.headerContent}>
             <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
             <View style={styles.headerTextWrap}>
-              <Text style={styles.headerTitle}>Cavendish University Zambia</Text>
-              <Text style={styles.headerSubtitle}>Clubs</Text>
-              <Text style={styles.headerTagline}>Find Your People. Make Your Mark.</Text>
+              <Text style={[styles.headerTitle, { color: colors.headerText }]}>Cavendish University Zambia</Text>
+              <Text style={styles.headerSubtitle}>{t('clubs.title')}</Text>
+              <Text style={styles.headerTagline}>{t('clubs.subtitle')}</Text>
             </View>
           </View>
           <Pressable style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
-            <Text style={styles.menuDots}>⋮</Text>
+            <Text style={[styles.menuDots, { color: colors.headerText }]}>⋮</Text>
           </Pressable>
         </View>
         {showMenu && (
           <>
             <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)} />
-            <View style={styles.dropdown} ref={menuRef}>
+            <View style={[styles.dropdown, { backgroundColor: colors.card }]} ref={menuRef}>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('EventsTab' as never); }}>
                 <Text style={styles.dropdownIcon}>📅</Text>
-                <Text style={styles.dropdownText}>Events</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('tabs.events')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('ClubsTab' as never); }}>
                 <Text style={styles.dropdownIcon}>🏛️</Text>
-                <Text style={styles.dropdownText}>Clubs</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('tabs.clubs')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('Profile'); }}>
                 <Text style={styles.dropdownIcon}>👤</Text>
-                <Text style={styles.dropdownText}>Profile</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('tabs.profile')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('MyTickets'); }}>
                 <Text style={styles.dropdownIcon}>🎫</Text>
-                <Text style={styles.dropdownText}>My Tickets</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('profile.myTickets')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('SavedEvents'); }}>
                 <Text style={styles.dropdownIcon}>❤️</Text>
-                <Text style={styles.dropdownText}>Saved Events</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('profile.savedEvents')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('Settings'); }}>
                 <Text style={styles.dropdownIcon}>⚙️</Text>
-                <Text style={styles.dropdownText}>Settings</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('settings.title')}</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -141,9 +145,9 @@ export function ClubsScreen() {
           <View>
             <View style={styles.searchContainer}>
               <TextInput
-                style={styles.searchInput}
-                placeholder="Search clubs..."
-                placeholderTextColor="#9ca3af"
+                style={[styles.searchInput, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+                placeholder={t('clubs.search')}
+                placeholderTextColor={colors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
@@ -159,13 +163,15 @@ export function ClubsScreen() {
                   key={category}
                   style={[
                     styles.categoryChip,
-                    selectedCategory === category && styles.categoryChipActive,
+                    { backgroundColor: colors.border },
+                    selectedCategory === category && [styles.categoryChipActive, { backgroundColor: colors.primary }],
                   ]}
                   onPress={() => setSelectedCategory(category)}
                 >
                   <Text style={[
                     styles.categoryChipText,
-                    selectedCategory === category && styles.categoryChipTextActive,
+                    { color: colors.textSecondary },
+                    selectedCategory === category && [styles.categoryChipTextActive, { color: colors.headerText }],
                   ]}>
                     {category}
                   </Text>
@@ -176,7 +182,7 @@ export function ClubsScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No clubs found</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('clubs.noClubs')}</Text>
           </View>
         }
       />
@@ -187,10 +193,8 @@ export function ClubsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
-    backgroundColor: '#2563eb',
     paddingTop: 24,
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -224,7 +228,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#fff',
   },
   headerSubtitle: {
     fontSize: 14,
@@ -250,7 +253,6 @@ const styles = StyleSheet.create({
   },
   menuDots: {
     fontSize: 22,
-    color: '#fff',
     fontWeight: '700',
     lineHeight: 24,
   },
@@ -266,7 +268,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 88,
     right: 16,
-    backgroundColor: '#fff',
     borderRadius: 16,
     paddingVertical: 6,
     minWidth: 200,
@@ -292,7 +293,6 @@ const styles = StyleSheet.create({
   dropdownText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
   },
   searchContainer: {
     paddingHorizontal: 16,
@@ -300,13 +300,11 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   searchInput: {
-    backgroundColor: '#fff',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   categoriesContainer: {
     maxHeight: 44,
@@ -322,26 +320,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
     marginRight: 8,
   },
   categoryChipActive: {
-    backgroundColor: '#2563eb',
   },
   categoryChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#64748b',
   },
   categoryChipTextActive: {
-    color: '#fff',
   },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 100,
   },
   card: {
-    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 16,
     marginBottom: 12,
@@ -393,45 +386,37 @@ const styles = StyleSheet.create({
   clubName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e293b',
     marginBottom: 4,
   },
   description: {
     fontSize: 13,
-    color: '#64748b',
     lineHeight: 18,
     marginBottom: 6,
   },
   membersText: {
     fontSize: 13,
-    color: '#475569',
     fontWeight: '500',
   },
   meetingInfo: {
-    backgroundColor: '#f8fafc',
     padding: 12,
     borderRadius: 20,
     marginBottom: 8,
   },
   meetingLabel: {
     fontSize: 13,
-    color: '#475569',
     marginBottom: 2,
   },
   leadersSection: {
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
     paddingTop: 8,
   },
   leadersTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   leaderText: {
     fontSize: 12,
-    color: '#64748b',
     marginLeft: 4,
   },
   emptyContainer: {
@@ -440,12 +425,10 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#94a3b8',
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
   },
 });

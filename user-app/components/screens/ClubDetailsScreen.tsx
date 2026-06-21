@@ -4,6 +4,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Club } from '../../types';
 import { userApi } from '../../api';
 import { normalizeImage } from '../../utils/image';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 type RouteParams = {
   ClubDetails: {
@@ -24,6 +26,8 @@ const categoryColors: { [key: string]: string } = {
 
 export function ClubDetailsScreen() {
   const navigation = useNavigation();
+  const { isDark, colors } = useTheme();
+  const { t } = useLanguage();
   const route = useRoute<RouteProp<RouteParams, 'ClubDetails'>>();
   const { clubId } = route.params;
   const [club, setClub] = useState<Club | null>(null);
@@ -39,7 +43,7 @@ export function ClubDetailsScreen() {
       const mem = await userApi.getClubMembership(clubId);
       setMembership(mem);
     } catch (e) {
-      setError('Failed to load club details. Please try again.');
+      setError(t('clubs.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -75,18 +79,18 @@ export function ClubDetailsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); setError(null); loadData(); }}>
-          <Text style={styles.retryButtonText}>Retry</Text>
+      <View style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error}</Text>
+        <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={() => { setLoading(true); setError(null); loadData(); }}>
+          <Text style={[styles.retryButtonText, { color: colors.headerText }]}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -94,8 +98,8 @@ export function ClubDetailsScreen() {
 
   if (!club) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Club not found</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.textSecondary }]}>{t('clubs.clubNotFound')}</Text>
       </View>
     );
   }
@@ -105,43 +109,43 @@ export function ClubDetailsScreen() {
   const renderButton = () => {
     if (!userApi.getCurrentUser()) {
       return (
-        <TouchableOpacity style={styles.joinButton} onPress={() => navigation.navigate('Login' as never)}>
-          <Text style={styles.joinButtonText}>Sign in to Join</Text>
+        <TouchableOpacity style={[styles.joinButton, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate('Login' as never)}>
+          <Text style={[styles.joinButtonText, { color: colors.headerText }]}>{t('clubs.signInToJoin')}</Text>
         </TouchableOpacity>
       );
     }
     if (actionLoading) {
       return (
-        <View style={styles.joinButton}>
-          <ActivityIndicator color="#fff" />
+        <View style={[styles.joinButton, { backgroundColor: colors.primary }]}>
+          <ActivityIndicator color={colors.headerText} />
         </View>
       );
     }
     if (!membership) {
       return (
-        <TouchableOpacity style={styles.joinButton} onPress={handleJoin}>
-          <Text style={styles.joinButtonText}>Request to Join</Text>
+        <TouchableOpacity style={[styles.joinButton, { backgroundColor: colors.primary }]} onPress={handleJoin}>
+          <Text style={[styles.joinButtonText, { color: colors.headerText }]}>{t('clubs.requestToJoin')}</Text>
         </TouchableOpacity>
       );
     }
     if (membership.role === 'Pending') {
       return (
-        <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#f59e0b' }]} onPress={handleLeave}>
-          <Text style={styles.joinButtonText}>Pending Approval</Text>
+        <TouchableOpacity style={[styles.joinButton, { backgroundColor: colors.warning }]} onPress={handleLeave}>
+          <Text style={[styles.joinButtonText, { color: colors.headerText }]}>{t('clubs.pendingApproval')}</Text>
         </TouchableOpacity>
       );
     }
     if (membership.role === 'President') {
       return (
-        <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#ef4444' }]} onPress={handleLeave}>
-          <Text style={styles.joinButtonText}>Leave Club</Text>
+        <TouchableOpacity style={[styles.joinButton, { backgroundColor: colors.danger }]} onPress={handleLeave}>
+          <Text style={[styles.joinButtonText, { color: colors.headerText }]}>{t('clubs.leaveClub')}</Text>
         </TouchableOpacity>
       );
     }
     if (membership.role === 'Member') {
       return (
-        <TouchableOpacity style={[styles.joinButton, { backgroundColor: '#ef4444' }]} onPress={handleLeave}>
-          <Text style={styles.joinButtonText}>Leave Club</Text>
+        <TouchableOpacity style={[styles.joinButton, { backgroundColor: colors.danger }]} onPress={handleLeave}>
+          <Text style={[styles.joinButtonText, { color: colors.headerText }]}>{t('clubs.leaveClub')}</Text>
         </TouchableOpacity>
       );
     }
@@ -149,33 +153,33 @@ export function ClubDetailsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backText}>← Back</Text>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.card }]} onPress={() => navigation.goBack()}>
+            <Text style={[styles.backText, { color: colors.text }]}>{t('common.back')}</Text>
           </TouchableOpacity>
           {membership?.role === 'President' && (
-            <TouchableOpacity style={styles.manageButton} onPress={() => navigation.navigate('ClubAdmin' as never, { clubId, clubName: club.name } as never)}>
-              <Text style={styles.manageButtonText}>Manage</Text>
+            <TouchableOpacity style={[styles.manageButton, { backgroundColor: colors.success }]} onPress={() => navigation.navigate('ClubAdmin' as never, { clubId, clubName: club.name } as never)}>
+              <Text style={[styles.manageButtonText, { color: colors.headerText }]}>{t('clubs.manage')}</Text>
             </TouchableOpacity>
           )}
           <Image source={normalizeImage(club.image)} style={styles.clubImage} resizeMode="contain" />
           <View style={styles.headerOverlay}>
             <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
-              <Text style={styles.categoryText}>{club.category}</Text>
+              <Text style={[styles.categoryText, { color: colors.headerText }]}>{club.category}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.clubName}>{club.name}</Text>
-          <Text style={styles.shortDescription}>{club.shortDescription}</Text>
+          <Text style={[styles.clubName, { color: colors.text }]}>{club.name}</Text>
+          <Text style={[styles.shortDescription, { color: colors.textSecondary }]}>{club.shortDescription}</Text>
 
           <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{club.members}</Text>
-              <Text style={styles.statLabel}>Members</Text>
+            <View style={[styles.statItem, { backgroundColor: colors.border }]}>
+              <Text style={[styles.statNumber, { color: colors.text }]}>{club.members}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('clubs.members')}</Text>
             </View>
             <View style={[styles.statItem, { 
               backgroundColor: club.status === 'active' ? '#dcfce7' : club.status === 'pending' ? '#fef9c3' : '#fee2e2' 
@@ -189,35 +193,35 @@ export function ClubDetailsScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About</Text>
-            <Text style={styles.description}>{club.description}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('clubs.about')}</Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>{club.description}</Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Meeting Details</Text>
-            <View style={styles.meetingCard}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('clubs.meetingDetails')}</Text>
+            <View style={[styles.meetingCard, { backgroundColor: colors.card }]}>
               <View style={styles.meetingRow}>
                 <Text style={styles.meetingIcon}>📅</Text>
-                <Text style={styles.meetingText}>{club.meetingTime}</Text>
+                <Text style={[styles.meetingText, { color: colors.textSecondary }]}>{club.meetingTime}</Text>
               </View>
               <View style={styles.meetingRow}>
                 <Text style={styles.meetingIcon}>📍</Text>
-                <Text style={styles.meetingText}>{club.meetingLocation}</Text>
+                <Text style={[styles.meetingText, { color: colors.textSecondary }]}>{club.meetingLocation}</Text>
               </View>
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Club Leaders</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('clubs.clubLeaders')}</Text>
             {club.leaders.map((leader, index) => (
-              <View key={index} style={styles.leaderCard}>
-                <View style={styles.leaderAvatar}>
-                  <Text style={styles.leaderInitial}>{leader.name.charAt(0)}</Text>
+              <View key={index} style={[styles.leaderCard, { backgroundColor: colors.card }]}>
+                <View style={[styles.leaderAvatar, { backgroundColor: colors.primary }]}>
+                  <Text style={[styles.leaderInitial, { color: colors.headerText }]}>{leader.name.charAt(0)}</Text>
                 </View>
                 <View style={styles.leaderInfo}>
-                  <Text style={styles.leaderName}>{leader.name}</Text>
-                  <Text style={styles.leaderRole}>{leader.role}</Text>
-                  <Text style={styles.leaderEmail}>{leader.email}</Text>
+                  <Text style={[styles.leaderName, { color: colors.text }]}>{leader.name}</Text>
+                  <Text style={[styles.leaderRole, { color: colors.primary }]}>{leader.role}</Text>
+                  <Text style={[styles.leaderEmail, { color: colors.textMuted }]}>{leader.email}</Text>
                 </View>
               </View>
             ))}

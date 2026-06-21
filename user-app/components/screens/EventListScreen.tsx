@@ -7,9 +7,13 @@ import { userApi } from '../../api';
 import { EventCard } from './EventCard';
 import { loadNotifications, getCached, getUnreadCount, markAllRead, addNotification, AppNotification } from '../../utils/notificationStore';
 import { getSocket } from '../../services/socket';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export function EventListScreen() {
   const navigation = useNavigation<any>();
+  const { isDark, colors } = useTheme();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [events, setEvents] = useState<Event[]>([]);
@@ -100,52 +104,52 @@ export function EventListScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
         <View style={styles.headerTopRow}>
           <View style={styles.headerContent}>
             <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
             <View style={styles.headerTextWrap}>
-              <Text style={styles.headerTitle}>Cavendish University Zambia</Text>
-              <Text style={styles.headerSubtitle}>Events</Text>
-              <Text style={styles.headerTagline}>Discover. Connect. Celebrate.</Text>
+              <Text style={[styles.headerTitle, { color: colors.headerText }]}>Cavendish University Zambia</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.headerText }]}>{t('events.title')}</Text>
+              <Text style={[styles.headerTagline, { color: colors.headerText }]}>{t('app.tagline')}</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
             <Pressable style={styles.notifButton} onPress={() => { setShowNotifs(!showNotifs); setShowMenu(false); if (!showNotifs) markAllRead().then(refreshNotifs); }}>
               <Text style={styles.notifBell}>🔔</Text>
               {unreadCount > 0 && (
-                <View style={styles.notifBadge}>
+                <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
                   <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
                 </View>
               )}
             </Pressable>
             <Pressable style={styles.menuButton} onPress={() => setShowMenu(!showMenu)}>
-              <Text style={styles.menuDots}>⋮</Text>
+              <Text style={[styles.menuDots, { color: colors.headerText }]}>⋮</Text>
             </Pressable>
           </View>
         </View>
         {showNotifs && (
           <>
             <Pressable style={styles.notifOverlay} onPress={() => setShowNotifs(false)} />
-            <View style={styles.notifDropdown} ref={notifRef}>
-              <Text style={styles.notifHeader}>Notifications</Text>
+            <View style={[styles.notifDropdown, { backgroundColor: colors.card }]} ref={notifRef}>
+              <Text style={[styles.notifHeader, { color: colors.text, borderBottomColor: colors.border }]}>{t('events.notifications')}</Text>
               {notifications.length === 0 ? (
-                <Text style={styles.notifEmpty}>No new notifications</Text>
+                <Text style={[styles.notifEmpty, { color: colors.textMuted }]}>{t('events.noNotifications')}</Text>
               ) : (
                 <ScrollView style={styles.notifScroll} nestedScrollEnabled>
                   {notifications.map(n => (
-                    <Pressable key={n.id} style={[styles.notifItem, !n.read && styles.notifItemUnread]} onPress={() => { if (n.eventId) { setShowNotifs(false); navigation.navigate('EventDetails', { eventId: n.eventId }); } }}>
-                      <Text style={styles.notifItemTitle}>{n.title}</Text>
-                      <Text style={styles.notifItemBody}>{n.body}</Text>
-                      <Text style={styles.notifItemTime}>{new Date(n.timestamp).toLocaleDateString()}</Text>
+                    <Pressable key={n.id} style={[styles.notifItem, !n.read && { backgroundColor: colors.primaryLight }]} onPress={() => { if (n.eventId) { setShowNotifs(false); navigation.navigate('EventDetails', { eventId: n.eventId }); } }}>
+                      <Text style={[styles.notifItemTitle, { color: colors.primary }]}>{n.title}</Text>
+                      <Text style={[styles.notifItemBody, { color: colors.text }]}>{n.body}</Text>
+                      <Text style={[styles.notifItemTime, { color: colors.textMuted }]}>{new Date(n.timestamp).toLocaleDateString()}</Text>
                     </Pressable>
                   ))}
                 </ScrollView>
@@ -156,30 +160,30 @@ export function EventListScreen() {
         {showMenu && (
           <>
             <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)} />
-            <View style={styles.dropdown} ref={menuRef}>
+            <View style={[styles.dropdown, { backgroundColor: colors.card }]} ref={menuRef}>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('EventsTab' as never); }}>
                 <Text style={styles.dropdownIcon}>📅</Text>
-                <Text style={styles.dropdownText}>Events</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('tabs.events')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('ClubsTab' as never); }}>
                 <Text style={styles.dropdownIcon}>🏛️</Text>
-                <Text style={styles.dropdownText}>Clubs</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('tabs.clubs')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('Profile'); }}>
                 <Text style={styles.dropdownIcon}>👤</Text>
-                <Text style={styles.dropdownText}>Profile</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('tabs.profile')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('MyTickets'); }}>
                 <Text style={styles.dropdownIcon}>🎫</Text>
-                <Text style={styles.dropdownText}>My Tickets</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('profile.myTickets')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('SavedEvents'); }}>
                 <Text style={styles.dropdownIcon}>❤️</Text>
-                <Text style={styles.dropdownText}>Saved Events</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('profile.savedEvents')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowMenu(false); navigation.navigate('Settings'); }}>
                 <Text style={styles.dropdownIcon}>⚙️</Text>
-                <Text style={styles.dropdownText}>Settings</Text>
+                <Text style={[styles.dropdownText, { color: colors.text }]}>{t('profile.settings')}</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -200,9 +204,9 @@ export function EventListScreen() {
           <View>
             <View style={styles.searchContainer}>
               <TextInput
-                style={styles.searchInput}
-                placeholder="Search events..."
-                placeholderTextColor="#9ca3af"
+                style={[styles.searchInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                placeholder={t('events.search')}
+                placeholderTextColor={colors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
@@ -219,12 +223,14 @@ export function EventListScreen() {
                   style={[
                     styles.categoryChip,
                     selectedCategory === category && styles.categoryChipActive,
+                    { backgroundColor: selectedCategory === category ? colors.primary : colors.border }
                   ]}
                   onPress={() => setSelectedCategory(category)}
                 >
                   <Text style={[
                     styles.categoryText,
                     selectedCategory === category && styles.categoryTextActive,
+                    { color: selectedCategory === category ? colors.headerText : colors.textSecondary }
                   ]}>
                     {category}
                   </Text>
@@ -235,7 +241,7 @@ export function EventListScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No events found</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('events.noEvents')}</Text>
           </View>
         }
       />
