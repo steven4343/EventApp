@@ -67,6 +67,12 @@ class AdminApi {
     this.currentAdmin = guest;
   }
 
+  async persistCurrentAdmin(): Promise<void> {
+    if (this.currentAdmin) {
+      await AsyncStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(this.currentAdmin));
+    }
+  }
+
   async logout(): Promise<void> {
     this.currentAdmin = null;
     this.token = null;
@@ -171,6 +177,10 @@ class AdminApi {
     await this.updateClub(id, { status: 'Inactive' });
   }
 
+  async reactivateClub(id: string): Promise<void> {
+    await this.updateClub(id, { status: 'Active' });
+  }
+
   async deleteClub(id: string): Promise<void> {
     await this.checkAuth(await fetch(`${BASE_URL}/clubs/${id}`, { method: 'DELETE', headers: this.authHeaders() }));
   }
@@ -226,12 +236,14 @@ class AdminApi {
     return res.json();
   }
 
-  async updateUser(id: string, updates: Partial<User>): Promise<void> {
-    await this.checkAuth(await fetch(`${BASE_URL}/users/${id}`, {
+  async updateUser(id: string, updates: Partial<User>): Promise<any> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/users/${id}`, {
       method: 'PUT',
       headers: this.authHeaders(),
       body: JSON.stringify(updates),
     }));
+    const data = await res.json();
+    return data.user || data;
   }
 
   async getStats(): Promise<any> {

@@ -781,6 +781,15 @@ function ClubsManagementScreen() {
     }
   };
 
+  const handleReactivate = async (id: string) => {
+    try {
+      await adminApi.reactivateClub(id);
+      loadClubs();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to reactivate club');
+    }
+  };
+
   const handleDelete = (id: string) => {
     Alert.alert('Delete Club', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
@@ -849,6 +858,11 @@ function ClubsManagementScreen() {
                     <Text style={styles.actionTextDraft}>Deactivate</Text>
                   </TouchableOpacity>
                 )}
+                {club.status === 'Inactive' && (
+                  <TouchableOpacity style={styles.actionPublish} onPress={() => handleReactivate(club.id)}>
+                    <Text style={styles.actionText}>Reactivate</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity style={styles.actionDelete} onPress={() => handleDelete(club.id)}>
                   <Text style={styles.actionTextDelete}>Delete</Text>
                 </TouchableOpacity>
@@ -868,6 +882,7 @@ function SettingsScreen({ admin, onLogout }: { admin: any; onLogout: () => void 
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editName, setEditName] = useState(admin?.name || '');
   const [editEmail, setEditEmail] = useState(admin?.email || '');
+  const [editAvatar, setEditAvatar] = useState('');
 
   const handleSaveProfile = async () => {
     if (!editName.trim() || !editEmail.trim()) {
@@ -875,9 +890,15 @@ function SettingsScreen({ admin, onLogout }: { admin: any; onLogout: () => void 
       return;
     }
     try {
-      await adminApi.updateUser(admin.id, { name: editName.trim(), email: editEmail.trim() });
-      admin.name = editName.trim();
-      admin.email = editEmail.trim();
+      const updates: any = { name: editName.trim(), email: editEmail.trim() };
+      if (editAvatar) updates.avatar = editAvatar;
+      const updated = await adminApi.updateUser(admin.id, updates);
+      if (updated) {
+        admin.name = updated.name;
+        admin.email = updated.email;
+        admin.avatar = updated.avatar;
+      }
+      await adminApi.persistCurrentAdmin();
       Alert.alert('Success', 'Profile updated');
       setShowEditProfile(false);
     } catch (e) {
@@ -894,9 +915,13 @@ function SettingsScreen({ admin, onLogout }: { admin: any; onLogout: () => void 
       <ScrollView style={styles.listContainer}>
         {admin && (
           <View style={styles.profileCard}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{admin.name?.charAt(0)?.toUpperCase() || 'A'}</Text>
-            </View>
+            {admin.avatar ? (
+              <Image source={{ uri: admin.avatar }} style={styles.avatarCircleImage} />
+            ) : (
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>{admin.name?.charAt(0)?.toUpperCase() || 'A'}</Text>
+              </View>
+            )}
             <Text style={styles.profileName}>{admin.name}</Text>
             <Text style={styles.profileEmail}>{admin.email}</Text>
             <Text style={styles.profileRole}>Administrator</Text>
@@ -905,55 +930,50 @@ function SettingsScreen({ admin, onLogout }: { admin: any; onLogout: () => void 
 
         <View style={styles.settingsGroup}>
           <Text style={styles.settingsGroupTitle}>Profile</Text>
-          <TouchableOpacity style={styles.settingsItem} onPress={() => { setEditName(admin?.name || ''); setEditEmail(admin?.email || ''); setShowEditProfile(true); }}>
-            <Text style={styles.settingsItemIcon}>âœï¸</Text>
+          <TouchableOpacity style={styles.settingsItem} onPress={() => { setEditName(admin?.name || ''); setEditEmail(admin?.email || ''); setEditAvatar(''); setShowEditProfile(true); }}>
             <View style={styles.settingsItemText}>
               <Text style={styles.settingsItemLabel}>Edit Profile</Text>
               <Text style={styles.settingsItemSubtext}>Update name and email</Text>
             </View>
-            <Text style={styles.settingsArrow}>â€º</Text>
+            <Text style={styles.settingsArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.settingsGroup}>
           <Text style={styles.settingsGroupTitle}>App</Text>
           <TouchableOpacity style={styles.settingsItem} onPress={() => setShowAbout(true)}>
-            <Text style={styles.settingsItemIcon}>â„¹ï¸</Text>
             <View style={styles.settingsItemText}>
               <Text style={styles.settingsItemLabel}>About App</Text>
               <Text style={styles.settingsItemSubtext}>CUZ Events Admin v1.0.0</Text>
             </View>
-            <Text style={styles.settingsArrow}>â€º</Text>
+            <Text style={styles.settingsArrow}>›</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.settingsItem} onPress={() => Linking.openURL('https://cuzevents.com/privacy')}>
-            <Text style={styles.settingsItemIcon}>ðŸ“„</Text>
             <View style={styles.settingsItemText}>
               <Text style={styles.settingsItemLabel}>Privacy Policy</Text>
               <Text style={styles.settingsItemSubtext}>Read our privacy policy</Text>
             </View>
-            <Text style={styles.settingsArrow}>â€º</Text>
+            <Text style={styles.settingsArrow}>›</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.settingsItem} onPress={() => Linking.openURL('https://cuzevents.com/terms')}>
-            <Text style={styles.settingsItemIcon}>ðŸ“‹</Text>
             <View style={styles.settingsItemText}>
               <Text style={styles.settingsItemLabel}>Terms of Service</Text>
               <Text style={styles.settingsItemSubtext}>Read our terms</Text>
             </View>
-            <Text style={styles.settingsArrow}>â€º</Text>
+            <Text style={styles.settingsArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.settingsGroup}>
           <Text style={styles.settingsGroupTitle}>Account</Text>
           <TouchableOpacity style={styles.settingsItem} onPress={onLogout}>
-            <Text style={styles.settingsItemIcon}>ðŸšª</Text>
             <View style={styles.settingsItemText}>
               <Text style={[styles.settingsItemLabel, { color: '#ef4444' }]}>Log Out</Text>
               <Text style={styles.settingsItemSubtext}>Sign out of admin account</Text>
             </View>
-            <Text style={styles.settingsArrow}>â€º</Text>
+            <Text style={styles.settingsArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
@@ -985,8 +1005,52 @@ function SettingsScreen({ admin, onLogout }: { admin: any; onLogout: () => void 
 
       <Modal visible={showEditProfile} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <ScrollView style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Profile</Text>
+            <View style={styles.avatarSection}>
+              <Image
+                source={{ uri: editAvatar || admin?.avatar || 'https://picsum.photos/seed/admin/200' }}
+                style={styles.editAvatar}
+              />
+              <View style={styles.editAvatarRow}>
+                <TouchableOpacity style={styles.imagePickerButton} onPress={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    base64: true,
+                    quality: 0.8,
+                    aspect: [1, 1],
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    const asset = result.assets[0];
+                    if (asset.base64) {
+                      setEditAvatar(`data:${asset.mimeType};base64,${asset.base64}`);
+                    }
+                  }
+                }}>
+                  <Text style={styles.imagePickerText}>Choose Photo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.imagePickerButton} onPress={async () => {
+                  const permission = await ImagePicker.requestCameraPermissionsAsync();
+                  if (!permission.granted) {
+                    Alert.alert('Permission needed', 'Camera permission is required');
+                    return;
+                  }
+                  const result = await ImagePicker.launchCameraAsync({
+                    base64: true,
+                    quality: 0.8,
+                    aspect: [1, 1],
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    const asset = result.assets[0];
+                    if (asset.base64) {
+                      setEditAvatar(`data:${asset.mimeType};base64,${asset.base64}`);
+                    }
+                  }
+                }}>
+                  <Text style={styles.imagePickerText}>Take Photo</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
             <TextInput style={styles.input} placeholder="Name" value={editName} onChangeText={setEditName} />
             <TextInput style={styles.input} placeholder="Email" value={editEmail} onChangeText={setEditEmail} keyboardType="email-address" />
             <View style={styles.modalButtons}>
@@ -997,7 +1061,7 @@ function SettingsScreen({ admin, onLogout }: { admin: any; onLogout: () => void 
                 <Text style={styles.submitText}>Save</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -1378,12 +1442,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-  },
-  settingsItemIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    width: 24,
-    textAlign: 'center',
   },
   settingsItemText: {
     flex: 1,
@@ -1809,6 +1867,32 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#dc2626',
     fontWeight: '700',
+  },
+  avatarCircleImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 12,
+  },
+  editAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 12,
+  },
+  editAvatarRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  avatarHint: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 4,
   },
   profileCard: {
     backgroundColor: '#fff',

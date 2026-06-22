@@ -4,6 +4,7 @@
     "slug": "cuz-events-admin",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/cuz-logo.png",
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
@@ -14,12 +15,14 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/cuz-logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/cuz-logo.png"
     }
   }
 }
