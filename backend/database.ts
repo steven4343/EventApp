@@ -167,6 +167,12 @@ class Database {
     await pool.query('DELETE FROM clubs WHERE id = $1', [id]);
   }
 
+  async getTicketById(id: string): Promise<Ticket | null> {
+    const { rows } = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
+    if (rows.length === 0) return null;
+    return mapTicket(rows[0]);
+  }
+
   async getTicketsByUser(userId: string): Promise<Ticket[]> {
     const { rows } = await pool.query('SELECT * FROM tickets WHERE user_id = $1 ORDER BY purchased_at DESC', [userId]);
     return rows.map(mapTicket);

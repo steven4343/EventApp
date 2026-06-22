@@ -20,7 +20,7 @@ Supports **mobile** (Expo), **web** (react-native-web), and **admin dashboard** 
 ### User App (`user-app/`)
 - **Event Discovery** — Browse, search, and filter events by category (Social, Cultural, Sports, Academic, Entertainment, Partnership)
 - **Event Details** — View event info, club, date/time, location, price, capacity, rating, and reviews
-- **Registration & Ticketing** — Register for events, view tickets, payment verification flow
+- **Registration & Ticketing** — Register for events, view tickets with QR codes (generated client-side via `qrcode` package), payment verification flow
 - **Clubs** — Browse clubs, view details, join/request membership
 - **Saved Events** — Bookmark events for later
 - **My Reviews** — View all reviews you've submitted
@@ -37,6 +37,7 @@ Supports **mobile** (Expo), **web** (react-native-web), and **admin dashboard** 
   - Rich create form: date picker (year/month/day), time picker (HH:MM slots), location picker (preset venues + custom), category chip selector, club picker, image picker (gallery/camera/URL)
 - **Clubs Management** — Approve, deactivate, delete clubs
 - **Payments Console** — Verify or reject ticket payments
+- **QR Ticket Scanner** — Verify tab with camera scanner (`html5-qrcode`) and manual ID lookup; scans QR codes to look up tickets, mark as used
 - **Reports Dashboard** — Platform-wide statistics (users, events, clubs, tickets)
 - **Feedback Console** — Per-event feedback modal showing average rating, rating distribution bar chart (1-5★), and chronological comments with user names
 - **Notifications** — Floating bell with dropdown; 30s polling for new published events; admin auto-logout on 24h session timeout / inactivity
@@ -48,6 +49,7 @@ Supports **mobile** (Expo), **web** (react-native-web), and **admin dashboard** 
 - **Socket.IO** — Real-time `event:status` events on publish/unpublish
 - **Feedback** — `POST /api/reviews` auto-updates event `rating`/`reviews` aggregates; `GET /api/events/:id/reviews` returns reviews + stats (avg, total, distribution)
 - **Push Tokens** — Expo push token registration for future push notifications
+- **QR Ticketing** — `GET /api/tickets/lookup/:id` (public lookup of ticket + user + event details), `PUT /api/tickets/:id/use` (mark ticket as used, admin-only)
 - **Seed Data** — Events, clubs, users with realistic Zambia-based data
 
 ---

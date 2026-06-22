@@ -1185,6 +1185,139 @@ function PaymentsManagementScreen() {
   );
 }
 
+function VerifyScreen() {
+  const [ticketId, setTicketId] = useState('');
+  const [ticket, setTicket] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [marking, setMarking] = useState(false);
+  const [error, setError] = useState('');
+  const scannerRef = useRef<any>(null);
+  const html5QrCode = useRef<any>(null);
+
+  const stopScanner = async () => {
+    if (html5QrCode.current) {
+      try { await html5QrCode.current.stop(); } catch {}
+      try { await html5QrCode.current.clear(); } catch {}
+      html5QrCode.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => { stopScanner(); };
+  }, []);
+
+  const startScanner = async () => {
+    setError('');
+    setTicket(null);
+    const { Html5Qrcode } = await import('html5-qrcode');
+    if (!scannerRef.current) return;
+    scannerRef.current.innerHTML = '<div id="qr-reader" style="width:300px;margin:0 auto"></div>';
+    const scanner = new Html5Qrcode('qr-reader');
+    html5QrCode.current = scanner;
+    try {
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText: string) => {
+          setTicketId(decodedText);
+          stopScanner();
+          lookupTicket(decodedText);
+        },
+        () => {},
+      );
+    } catch (e: any) {
+      setError('Camera access denied or not available');
+    }
+  };
+
+  const lookupTicket = async (id?: string) => {
+    const lookupId = id || ticketId;
+    if (!lookupId.trim()) { setError('Enter a ticket ID'); return; }
+    setLoading(true);
+    setError('');
+    setTicket(null);
+    try {
+      const data = await adminApi.lookupTicket(lookupId.trim());
+      if (!data) { setError('Ticket not found'); return; }
+      setTicket(data);
+    } catch { setError('Failed to look up ticket'); }
+    finally { setLoading(false); }
+  };
+
+  const markAsUsed = async () => {
+    if (!ticket) return;
+    setMarking(true);
+    try {
+      await adminApi.markTicketUsed(ticket.id);
+      setTicket({ ...ticket, status: 'Used' });
+      alert('Ticket marked as used');
+    } catch { alert('Failed to mark as used'); }
+    finally { setMarking(false); }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Confirmed': return { bg: '#dcfce7', text: '#166534' };
+      case 'Used': return { bg: '#f1f5f9', text: '#64748b' };
+      case 'Cancelled': return { bg: '#fee2e2', text: '#991b1b' };
+      default: return { bg: '#f1f5f9', text: '#64748b' };
+    }
+  };
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Verify Tickets</Text>
+        <Text style={styles.headerSubtitle}>Scan or enter ticket ID</Text>
+      </View>
+      <ScrollView style={styles.listContainer}>
+        <TouchableOpacity style={[styles.submitButton, { marginBottom: 16 }]} onPress={startScanner}>
+          <Text style={styles.submitText}>Open Camera Scanner</Text>
+        </TouchableOpacity>
+        <View ref={scannerRef} />
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+          <TextInput
+            style={[styles.input, { flex: 1, marginBottom: 0 }]}
+            placeholder="Paste ticket ID here..."
+            value={ticketId}
+            onChangeText={setTicketId}
+          />
+          <TouchableOpacity style={[styles.submitButton, { flex: 0, paddingHorizontal: 20 }]} onPress={() => lookupTicket()}>
+            <Text style={styles.submitText}>Lookup</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading && <ActivityIndicator size="large" color="#2563eb" />}
+        {error ? <Text style={{ color: '#dc2626', textAlign: 'center', marginBottom: 12 }}>{error}</Text> : null}
+
+        {ticket && (
+          <View style={styles.listItem}>
+            <View style={styles.ticketHeader}>
+              <Text style={styles.itemTitle}>{ticket.event_title || 'Event'}</Text>
+              <Text style={[styles.itemStatus, { backgroundColor: getStatusColor(ticket.status).bg, color: getStatusColor(ticket.status).text }]}>
+                {ticket.status}
+              </Text>
+            </View>
+            <View style={{ gap: 6, marginTop: 12 }}>
+              <Text style={{ fontSize: 14, color: '#475569' }}>Ticket: {ticket.id}</Text>
+              <Text style={{ fontSize: 14, color: '#475569' }}>Attendee: {ticket.user_name} ({ticket.user_email})</Text>
+              <Text style={{ fontSize: 14, color: '#475569' }}>Seat: {ticket.seat}</Text>
+              {ticket.event_date && <Text style={{ fontSize: 14, color: '#475569' }}>Date: {ticket.event_date} {ticket.event_time}</Text>}
+              <Text style={{ fontSize: 14, color: '#475569' }}>Location: {ticket.event_location}</Text>
+            </View>
+            {ticket.status === 'Confirmed' && (
+              <TouchableOpacity style={[styles.submitButton, { marginTop: 16 }]} onPress={markAsUsed} disabled={marking}>
+                <Text style={styles.submitText}>{marking ? 'Marking...' : 'Mark as Used'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </View>
+  );
+}
+
 function getPaymentStatusStyle(status: string) {
   switch (status) {
     case 'verified': return { backgroundColor: '#dcfce7', color: '#166534' };
@@ -1242,6 +1375,14 @@ function AdminTabs({ admin, onLogout }: { admin: any; onLogout: () => void }) {
         options={{
           tabBarLabel: 'Clubs',
           tabBarIcon: ({ focused }) => <TabIcon icon="👥" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Verify"
+        component={VerifyScreen}
+        options={{
+          tabBarLabel: 'Scan',
+          tabBarIcon: ({ focused }) => <TabIcon icon="📷" focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -1893,6 +2034,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#94a3b8',
     marginTop: 4,
+  },
+  ticketHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   profileCard: {
     backgroundColor: '#fff',

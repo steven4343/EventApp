@@ -246,6 +246,19 @@ class AdminApi {
     return data.user || data;
   }
 
+  async lookupTicket(id: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/tickets/lookup/${id}`);
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  async markTicketUsed(id: string): Promise<void> {
+    await this.checkAuth(await fetch(`${BASE_URL}/tickets/${id}/use`, {
+      method: 'PUT',
+      headers: this.authHeaders(),
+    }));
+  }
+
   async getStats(): Promise<any> {
     const res = await fetch(`${BASE_URL}/stats`, { headers: this.authHeaders() });
     const stats = await res.json();
