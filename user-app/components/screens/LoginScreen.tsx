@@ -45,6 +45,9 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
       const idToken = await signInWithGoogle();
       console.log('handleGoogleSignIn: got idToken', !!idToken);
       if (!idToken) {
+        if (Platform.OS === 'web') {
+          return;
+        }
         Alert.alert(t('login.error'), t('login.cancelled'));
         setLoading(false);
         return;

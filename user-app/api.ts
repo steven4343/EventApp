@@ -86,6 +86,20 @@ class UserApi {
     } catch {}
   }
 
+  async googleSignIn(idToken: string) {
+    const res = await fetch(`${BASE_URL}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    if (!res.ok) return null;
+    const result = await res.json();
+    this.token = result.token;
+    if (this.token) await AsyncStorage.setItem(TOKEN_KEY, this.token);
+    this.currentUser = result.user;
+    return result.user;
+  }
+
   async login(email: string, password: string) {
     const res = await fetch(`${BASE_URL}/users/login`, {
       method: 'POST',

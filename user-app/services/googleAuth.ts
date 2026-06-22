@@ -18,9 +18,9 @@ export function checkRedirectResult(): void {
     if (!fragment) return;
     const params = new URLSearchParams(fragment);
     const idToken = params.get('id_token');
-    if (idToken) {
+    if (idToken && typeof pendingTokenCallback === 'function') {
       window.location.hash = '';
-      pendingTokenCallback?.(idToken);
+      pendingTokenCallback(idToken);
       pendingTokenCallback = null;
     }
   } catch (e) {
@@ -65,6 +65,12 @@ export async function signInWithGoogle(): Promise<string | null> {
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+
+    if (Platform.OS === 'web') {
+      window.location.href = authUrl;
+      return null;
+    }
+
     const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
     if (result.type === 'success' && result.url) {
