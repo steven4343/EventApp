@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,11 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { userApi } from '../../api';
+import QRCode from 'qrcode';
 
 interface Ticket {
   id: string;
@@ -45,10 +47,27 @@ export function MyTicketsScreen() {
   const navigation = useNavigation();
   const [tickets, setTickets] = useState<TicketWithEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
+  const qrGenerating = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     loadTickets();
   }, []);
+
+  const generateQr = async (ticketId: string) => {
+    if (qrCodes[ticketId] || qrGenerating.current.has(ticketId)) return;
+    qrGenerating.current.add(ticketId);
+    try {
+      const dataUri = await QRCode.toDataURL(ticketId, {
+        width: 200,
+        margin: 2,
+        color: { dark: '#1e293b', light: '#ffffff' },
+      });
+      setQrCodes(prev => ({ ...prev, [ticketId]: dataUri }));
+    } catch (e) {
+      console.error('QR generation failed:', e);
+    }
+  };
 
   const loadTickets = async () => {
     try {
@@ -59,6 +78,7 @@ export function MyTicketsScreen() {
         ticketsWithEvents.push({ ...ticket, event: event || undefined });
       }
       setTickets(ticketsWithEvents);
+      ticketsWithEvents.forEach(t => { if (t.status === 'Confirmed') generateQr(t.id); });
     } catch (e) {
       console.error('Failed to load tickets:', e);
     } finally {
@@ -136,9 +156,13 @@ export function MyTicketsScreen() {
                   <Text style={styles.detailText}>🎫 {ticket.id.slice(0, 8).toUpperCase()}</Text>
                 </View>
                 {ticket.status === 'Confirmed' && (
-                  <View style={styles.qrPlaceholder}>
-                    <Text style={{ fontSize: 48 }}>📱</Text>
-                    <Text style={styles.qrText}>QR Code</Text>
+                  <View style={styles.qrSection}>
+                    {qrCodes[ticket.id] ? (
+                      <Image source={{ uri: qrCodes[ticket.id] }} style={styles.qrImage} />
+                    ) : (
+                      <ActivityIndicator size="small" color="#2563eb" />
+                    )}
+                    <Text style={styles.qrText}>Scan for entry</Text>
                   </View>
                 )}
               </View>
@@ -248,7 +272,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#475569',
   },
-  qrPlaceholder: {
+  qrSection: {
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
@@ -256,9 +280,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
   },
+  qrImage: {
+    width: 160,
+    height: 160,
+  },
   qrText: {
     fontSize: 13,
     color: '#94a3b8',
-    marginTop: 4,
+    marginTop: 8,
   },
 });

@@ -652,6 +652,31 @@ app.put('/api/tickets/:id/reject', authenticate, async (req, res) => {
   res.json({ message: 'Ticket rejected' });
 });
 
+app.get('/api/tickets/lookup/:id', async (req, res) => {
+  const { id } = req.params;
+  const ticket = await database.getTicketById(id);
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+  const user = await database.getUserById(ticket.userId);
+  const event = await database.getEventById(ticket.eventId);
+  res.json({
+    ...ticket,
+    user_name: user?.name || 'Unknown',
+    user_email: user?.email || 'unknown',
+    event_title: event?.title || 'Unknown',
+    event_date: event?.date || '',
+    event_time: event?.time || '',
+    event_location: event?.location || '',
+  });
+});
+
+app.put('/api/tickets/:id/use', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const ticket = await database.getTicketById(id);
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+  await database.updateTicketStatus(id, 'Used');
+  res.json({ message: 'Ticket marked as used' });
+});
+
 // ==================== SAVED EVENTS ROUTES ====================
 
 app.get('/api/saved/me', authenticate, async (req, res) => {
