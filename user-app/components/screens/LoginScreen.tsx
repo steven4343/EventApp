@@ -15,6 +15,8 @@ import {
 
 import { useAuth } from '../../context/AuthContext';
 import { signInWithGoogle } from '../../services/googleAuth';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface LoginScreenProps {
   onCancel?: () => void;
@@ -22,6 +24,8 @@ interface LoginScreenProps {
 
 export function LoginScreen({ onCancel }: LoginScreenProps) {
   const { login, register: authRegister, googleSignIn } = useAuth();
+  const { isDark, colors } = useTheme();
+  const { t } = useLanguage();
 
   const [showEmailForm, setShowEmailForm] = useState(false);
 
@@ -41,7 +45,10 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
       const idToken = await signInWithGoogle();
       console.log('handleGoogleSignIn: got idToken', !!idToken);
       if (!idToken) {
-        Alert.alert('Google Sign-In', 'Sign-in was cancelled or failed.');
+        if (Platform.OS === 'web') {
+          return;
+        }
+        Alert.alert(t('login.error'), t('login.cancelled'));
         setLoading(false);
         return;
       }
@@ -51,11 +58,11 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
         console.log('handleGoogleSignIn: calling onCancel');
         onCancel?.();
       } else {
-        Alert.alert('Error', 'Google sign-in failed. Please try again.');
+        Alert.alert(t('login.error'), t('login.googleSignInFailed'));
       }
     } catch (e) {
       console.error('Google sign-in error:', e);
-      Alert.alert('Error', 'Failed to sign in with Google');
+      Alert.alert(t('login.error'), t('login.googleSignInFailed'));
     } finally {
       setLoading(false);
     }
@@ -63,20 +70,20 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+      Alert.alert(t('login.error'), t('login.pleaseEnterEmailAndPassword'));
       return;
     }
     setLoading(true);
     try {
       const success = await login(email, password);
       if (!success) {
-        Alert.alert('Login Failed', 'Invalid email or password');
+        Alert.alert(t('login.loginFailed'), t('login.invalidCredentials'));
       } else {
         onCancel?.();
       }
     } catch (e) {
       console.error('Login error:', e);
-      Alert.alert('Error', 'Failed to connect to server');
+      Alert.alert(t('login.error'), t('login.failedToConnect'));
     } finally {
       setLoading(false);
     }
@@ -84,7 +91,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert(t('login.error'), t('login.pleaseFillFields'));
       return;
     }
     setLoading(true);
@@ -98,13 +105,13 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
         year: parseInt(year) || 1,
       });
       if (!success) {
-        Alert.alert('Registration Failed', 'Something went wrong. Try again.');
+        Alert.alert(t('login.registrationFailed'), t('login.somethingWentWrong'));
       } else {
         onCancel?.();
       }
     } catch (e) {
       console.error('Registration error:', e);
-      Alert.alert('Error', 'Failed to connect to server');
+      Alert.alert(t('login.error'), t('login.failedToConnect'));
     } finally {
       setLoading(false);
     }
@@ -113,43 +120,43 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
   if (!showEmailForm) {
     return (
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
             <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.title}>CUZ Events</Text>
-            <Text style={styles.subtitle}>Welcome to the campus hub</Text>
+            <Text style={[styles.title, { color: colors.text }]}>CUZ Events</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('login.welcome')}</Text>
           </View>
 
-          <View style={styles.form}>
+          <View style={[styles.form, { backgroundColor: colors.card }]}>
             <TouchableOpacity
-              style={[styles.googleButton, loading && styles.buttonDisabled]}
+              style={[styles.googleButton, loading && styles.buttonDisabled, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={handleGoogleSignIn}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
+                <ActivityIndicator color={colors.primary} style={{ marginRight: 10 }} />
               ) : (
-                <Text style={styles.googleIcon}>G</Text>
+                <Text style={[styles.googleIcon, { backgroundColor: colors.border }]}>G</Text>
               )}
-              <Text style={styles.googleButtonText}>
-                {loading ? 'Signing in...' : 'Continue with Google'}
+              <Text style={[styles.googleButtonText, { color: colors.text }]}>
+                {loading ? t('login.signingIn') : t('login.continueWithGoogle')}
               </Text>
             </TouchableOpacity>
 
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textMuted }]}>or</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
             <TouchableOpacity
-              style={styles.emailButton}
+              style={[styles.emailButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowEmailForm(true)}
             >
-              <Text style={styles.emailButtonText}>Login with Email</Text>
+              <Text style={[styles.emailButtonText, { color: colors.headerText }]}>{t('login.loginWithEmail')}</Text>
             </TouchableOpacity>
 
             {onCancel && (
@@ -157,7 +164,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
                 style={styles.cancelButton}
                 onPress={onCancel}
               >
-                <Text style={styles.cancelText}>Continue as guest</Text>
+                <Text style={[styles.cancelText, { color: colors.textSecondary }]}>{t('login.continueAsGuest')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -167,51 +174,55 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
             <Image source={require('../../assets/cuz-logo.png')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.title}>CUZ Events</Text>
-            <Text style={styles.subtitle}>
-              {isRegister ? 'Create your account' : 'Welcome back'}
+            <Text style={[styles.title, { color: colors.text }]}>CUZ Events</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              {isRegister ? t('login.createAccount') : t('login.welcomeBack')}
             </Text>
         </View>
 
-        <View style={styles.form}>
+        <View style={[styles.form, { backgroundColor: colors.card }]}>
           {isRegister && (
             <>
-              <Text style={styles.label}>Full Name *</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('login.fullName')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
                 placeholder="John Doe"
+                placeholderTextColor={colors.textMuted}
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
               />
 
-              <Text style={styles.label}>Student ID</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('login.studentId')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
                 placeholder="CUZ/2024/001"
+                placeholderTextColor={colors.textMuted}
                 value={studentId}
                 onChangeText={setStudentId}
               />
 
-              <Text style={styles.label}>Faculty</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('login.faculty')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
                 placeholder="Business"
+                placeholderTextColor={colors.textMuted}
                 value={faculty}
                 onChangeText={setFaculty}
               />
 
-              <Text style={styles.label}>Year of Study</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('login.yearOfStudy')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
                 placeholder="1"
+                placeholderTextColor={colors.textMuted}
                 value={year}
                 onChangeText={setYear}
                 keyboardType="number-pad"
@@ -219,32 +230,34 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
             </>
           )}
 
-          <Text style={styles.label}>Email *</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{t('login.email')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
             placeholder="student@cavendish.co.zm"
+            placeholderTextColor={colors.textMuted}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
           />
 
-          <Text style={styles.label}>Password *</Text>
+          <Text style={[styles.label, { color: colors.text }]}>{t('login.password')}</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
+            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
+            placeholder={t('login.enterPassword')}
+            placeholderTextColor={colors.textMuted}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
           />
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, loading && styles.buttonDisabled, { backgroundColor: colors.primary }]}
             onPress={isRegister ? handleRegister : handleLogin}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>
-              {loading ? 'Please wait...' : isRegister ? 'Create Account' : 'Log In'}
+            <Text style={[styles.buttonText, { color: colors.headerText }]}>
+              {loading ? t('login.pleaseWait') : isRegister ? t('login.createAccount') : t('login.logIn')}
             </Text>
           </TouchableOpacity>
 
@@ -260,10 +273,10 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
               setYear('1');
             }}
           >
-            <Text style={styles.toggleText}>
+            <Text style={[styles.toggleText, { color: colors.primary }]}>
               {isRegister
-                ? 'Already have an account? Log in'
-                : "Don't have an account? Register"}
+                ? t('login.alreadyHaveAccount')
+                : t('login.noAccount')}
             </Text>
           </TouchableOpacity>
 
@@ -271,7 +284,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
             style={styles.backButton}
             onPress={() => setShowEmailForm(false)}
           >
-            <Text style={styles.backText}>Back to all sign-in options</Text>
+            <Text style={[styles.backText, { color: colors.textSecondary }]}>{t('login.backToOptions')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

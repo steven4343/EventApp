@@ -6,10 +6,14 @@ import { userApi } from '../../api';
 
 import { useAuth } from '../../context/AuthContext';
 import { normalizeImage } from '../../utils/image';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => void }) {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
+  const { isDark, colors } = useTheme();
+  const { t } = useLanguage();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,8 +26,8 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
 
   if (loading) {
     return (
-      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={[styles.container, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -46,14 +50,14 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Recommendations</Text>
-            <Text style={styles.headerSubtitle}>Events you might like</Text>
+            <Text style={[styles.headerTitle, { color: colors.headerText }]}>{t('recommendations.title')}</Text>
+            <Text style={styles.headerSubtitle}>{t('recommendations.subtitle')}</Text>
           </View>
-          <TouchableOpacity onPress={requireAuth} style={styles.profileButton}>
+          <TouchableOpacity onPress={requireAuth} style={[styles.profileButton, { backgroundColor: colors.card }]}>
             {user ? (
               <Image source={{ uri: user.avatar || 'https://picsum.photos/seed/user/200' }} style={styles.profileImage} />
             ) : (
@@ -65,26 +69,26 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>🔥 Trending Now</Text>
-          <TouchableOpacity onPress={() => handleSeeAll('trending')}><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>🔥 {t('recommendations.trending')}</Text>
+          <TouchableOpacity onPress={() => handleSeeAll('trending')}><Text style={[styles.seeAll, { color: colors.primary }]}>{t('recommendations.seeAll')}</Text></TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {featuredEvents.map(event => (
             <TouchableOpacity 
               key={event.id} 
-              style={styles.featuredCard}
+              style={[styles.featuredCard, { backgroundColor: colors.card }]}
               onPress={() => handleEventPress(event)}
               activeOpacity={0.8}
             >
               <Image source={normalizeImage(event.image)} style={styles.featuredImage} resizeMode="cover" />
               <View style={styles.featuredOverlay}>
                 <View style={styles.featuredBadge}>
-                  <Text style={styles.featuredBadgeText}>★ {event.rating}</Text>
+                  <Text style={[styles.featuredBadgeText, { color: colors.warning }]}>★ {event.rating}</Text>
                 </View>
               </View>
               <View style={styles.featuredContent}>
-                <Text style={styles.featuredTitle} numberOfLines={1}>{event.title}</Text>
-                <Text style={styles.featuredInfo}>📅 {formatDate(event.date)} • 📍 {event.location.split(',')[0]}</Text>
+                <Text style={[styles.featuredTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
+                <Text style={[styles.featuredInfo, { color: colors.textSecondary }]}>📅 {formatDate(event.date)} • 📍 {event.location.split(',')[0]}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -93,26 +97,26 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>📅 Upcoming Soon</Text>
-          <TouchableOpacity onPress={() => handleSeeAll('upcoming')}><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>📅 {t('recommendations.upcomingSoon')}</Text>
+          <TouchableOpacity onPress={() => handleSeeAll('upcoming')}><Text style={[styles.seeAll, { color: colors.primary }]}>{t('recommendations.seeAll')}</Text></TouchableOpacity>
         </View>
         <View style={styles.upcomingList}>
           {upcomingEvents.map(event => (
             <TouchableOpacity 
               key={event.id} 
-              style={styles.upcomingCard}
+              style={[styles.upcomingCard, { backgroundColor: colors.card }]}
               onPress={() => handleEventPress(event)}
               activeOpacity={0.8}
             >
               <Image source={normalizeImage(event.image)} style={styles.upcomingImage} resizeMode="cover" />
               <View style={styles.upcomingContent}>
-                <Text style={styles.upcomingTitle} numberOfLines={1}>{event.title}</Text>
-                <Text style={styles.upcomingDate}>📅 {formatDate(event.date)}</Text>
-                <Text style={styles.upcomingPrice}>
-                  {event.price === 0 ? 'Free' : `K${event.price}`}
+                <Text style={[styles.upcomingTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
+                <Text style={[styles.upcomingDate, { color: colors.textSecondary }]}>📅 {formatDate(event.date)}</Text>
+                <Text style={[styles.upcomingPrice, { color: colors.primary }]}>
+                  {event.price === 0 ? t('eventDetails.free') : `K${event.price}`}
                 </Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -120,21 +124,21 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>🎉 Free Events</Text>
-          <TouchableOpacity onPress={() => handleSeeAll('free')}><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>🎉 {t('recommendations.freeEvents')}</Text>
+          <TouchableOpacity onPress={() => handleSeeAll('free')}><Text style={[styles.seeAll, { color: colors.primary }]}>{t('recommendations.seeAll')}</Text></TouchableOpacity>
         </View>
         <View style={styles.freeGrid}>
           {freeEvents.map(event => (
             <TouchableOpacity 
               key={event.id} 
-              style={styles.freeCard}
+              style={[styles.freeCard, { backgroundColor: colors.card }]}
               onPress={() => handleEventPress(event)}
               activeOpacity={0.8}
             >
               <Image source={normalizeImage(event.image)} style={styles.freeImage} resizeMode="cover" />
               <View style={styles.freeContent}>
-                <Text style={styles.freeTitle} numberOfLines={1}>{event.title}</Text>
-                <Text style={styles.freeDate}>{formatDate(event.date)}</Text>
+                <Text style={[styles.freeTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
+                <Text style={[styles.freeDate, { color: colors.textSecondary }]}>{formatDate(event.date)}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -143,7 +147,7 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>📌 Pinned by Students</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>📌 {t('recommendations.pinned')}</Text>
         </View>
         <View style={styles.pinnedContainer}>
           {events.length > 0 && (() => {
@@ -151,25 +155,25 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
             const mostAttendees = events.reduce((a, b) => a.attendees > b.attendees ? a : b);
             return (
               <>
-                <TouchableOpacity style={styles.pinnedCard} onPress={() => handleEventPress(events[0])}>
+                <TouchableOpacity style={[styles.pinnedCard, { backgroundColor: colors.card }]} onPress={() => handleEventPress(events[0])}>
                   <Text style={styles.pinnedIcon}>📌</Text>
                   <View style={styles.pinnedContent}>
-                    <Text style={styles.pinnedTitle}>{events[0].title}</Text>
-                    <Text style={styles.pinnedSubtitle}>First listed event</Text>
+                    <Text style={[styles.pinnedTitle, { color: colors.text }]}>{events[0].title}</Text>
+                    <Text style={[styles.pinnedSubtitle, { color: colors.textSecondary }]}>{t('recommendations.firstListed')}</Text>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.pinnedCard} onPress={() => handleEventPress(highestRated)}>
+                <TouchableOpacity style={[styles.pinnedCard, { backgroundColor: colors.card }]} onPress={() => handleEventPress(highestRated)}>
                   <Text style={styles.pinnedIcon}>⭐</Text>
                   <View style={styles.pinnedContent}>
-                    <Text style={styles.pinnedTitle}>{highestRated.title}</Text>
-                    <Text style={styles.pinnedSubtitle}>Highest rated ({highestRated.rating})</Text>
+                    <Text style={[styles.pinnedTitle, { color: colors.text }]}>{highestRated.title}</Text>
+                    <Text style={[styles.pinnedSubtitle, { color: colors.textSecondary }]}>{t('recommendations.highestRated')} ({highestRated.rating})</Text>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.pinnedCard} onPress={() => handleEventPress(mostAttendees)}>
+                <TouchableOpacity style={[styles.pinnedCard, { backgroundColor: colors.card }]} onPress={() => handleEventPress(mostAttendees)}>
                   <Text style={styles.pinnedIcon}>👥</Text>
                   <View style={styles.pinnedContent}>
-                    <Text style={styles.pinnedTitle}>{mostAttendees.title}</Text>
-                    <Text style={styles.pinnedSubtitle}>Most attendees ({mostAttendees.attendees})</Text>
+                    <Text style={[styles.pinnedTitle, { color: colors.text }]}>{mostAttendees.title}</Text>
+                    <Text style={[styles.pinnedSubtitle, { color: colors.textSecondary }]}>{t('recommendations.mostAttendees')} ({mostAttendees.attendees})</Text>
                   </View>
                 </TouchableOpacity>
               </>
@@ -186,7 +190,6 @@ export function RecommendationsScreen({ requireAuth }: { requireAuth?: () => voi
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     backgroundColor: '#8b5cf6',
@@ -202,7 +205,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#fff',
   },
   headerSubtitle: {
     fontSize: 14,
@@ -229,7 +231,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -249,11 +250,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
   },
   seeAll: {
     fontSize: 14,
-    color: '#2563eb',
     fontWeight: '500',
   },
   featuredCard: {
@@ -261,7 +260,6 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -286,7 +284,6 @@ const styles = StyleSheet.create({
   featuredBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#d97706',
   },
   featuredContent: {
     padding: 12,
@@ -294,12 +291,10 @@ const styles = StyleSheet.create({
   featuredTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   featuredInfo: {
     fontSize: 12,
-    color: '#64748b',
   },
   upcomingList: {
     gap: 8,
@@ -307,7 +302,6 @@ const styles = StyleSheet.create({
   upcomingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 12,
     shadowColor: '#000',
@@ -328,22 +322,18 @@ const styles = StyleSheet.create({
   upcomingTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   upcomingDate: {
     fontSize: 13,
-    color: '#64748b',
     marginBottom: 2,
   },
   upcomingPrice: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2563eb',
   },
   chevron: {
     fontSize: 24,
-    color: '#cbd5e1',
     marginLeft: 8,
   },
   freeGrid: {
@@ -353,7 +343,6 @@ const styles = StyleSheet.create({
   },
   freeCard: {
     width: '48%',
-    backgroundColor: '#fff',
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -372,12 +361,10 @@ const styles = StyleSheet.create({
   freeTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   freeDate: {
     fontSize: 12,
-    color: '#64748b',
   },
   pinnedContainer: {
     gap: 8,
@@ -385,7 +372,6 @@ const styles = StyleSheet.create({
   pinnedCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 14,
     borderLeftWidth: 4,
@@ -406,11 +392,9 @@ const styles = StyleSheet.create({
   pinnedTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
   },
   pinnedSubtitle: {
     fontSize: 12,
-    color: '#64748b',
     marginTop: 2,
   },
 });

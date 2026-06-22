@@ -11,6 +11,8 @@ import {
   Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const FAQS = [
   {
@@ -37,6 +39,8 @@ const FAQS = [
 
 export function HelpSupportScreen() {
   const navigation = useNavigation();
+  const { isDark, colors } = useTheme();
+  const { t } = useLanguage();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -47,7 +51,7 @@ export function HelpSupportScreen() {
 
   const handleSubmitReport = () => {
     if (!reportText.trim()) {
-      Alert.alert('Error', 'Please describe the issue');
+      Alert.alert(t('login.error'), 'Please describe the issue');
       return;
     }
     Alert.alert('Report Submitted', 'We will review your report and get back to you.');
@@ -56,49 +60,49 @@ export function HelpSupportScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>{'<'}</Text>
+            <Text style={[styles.backText, { color: colors.headerText }]}>{'<'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Help & Support</Text>
+          <Text style={[styles.headerTitle, { color: colors.headerText }]}>{t('helpSupport.title')}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('helpSupport.faq')}</Text>
           {FAQS.map((faq, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.faqItem}
+              style={[styles.faqItem, { borderBottomColor: colors.border }]}
               onPress={() => setExpandedFaq(expandedFaq === index ? null : index)}
             >
               <View style={styles.faqHeader}>
-                <Text style={styles.faqQuestion}>{faq.question}</Text>
-                <Text style={styles.faqChevron}>{expandedFaq === index ? '▾' : '▸'}</Text>
+                <Text style={[styles.faqQuestion, { color: colors.text }]}>{faq.question}</Text>
+                <Text style={[styles.faqChevron, { color: colors.textMuted }]}>{expandedFaq === index ? '▾' : '▸'}</Text>
               </View>
               {expandedFaq === index && (
-                <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>{faq.answer}</Text>
               )}
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Support</Text>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('helpSupport.contactSupport')}</Text>
           <TouchableOpacity style={styles.contactButton} onPress={handleContactEmail}>
             <Text style={styles.contactIcon}>📧</Text>
-            <Text style={styles.contactText}>Email Support</Text>
+            <Text style={[styles.contactText, { color: colors.primary }]}>Email Support</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Report a Problem</Text>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('helpSupport.reportIssue')}</Text>
           <TouchableOpacity
-            style={styles.reportButton}
+            style={[styles.reportButton, { backgroundColor: colors.primary }]}
             onPress={() => setShowReportForm(true)}
           >
-            <Text style={styles.reportButtonText}>Submit a Report</Text>
+            <Text style={[styles.reportButtonText, { color: colors.headerText }]}>{t('helpSupport.reportIssue')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -107,29 +111,30 @@ export function HelpSupportScreen() {
 
       <Modal visible={showReportForm} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Report a Problem</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('helpSupport.reportIssue')}</Text>
             <TextInput
-              style={styles.reportInput}
+              style={[styles.reportInput, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
               value={reportText}
               onChangeText={setReportText}
               placeholder="Describe the issue you're experiencing..."
+              placeholderTextColor={colors.textMuted}
               multiline
               numberOfLines={5}
               textAlignVertical="top"
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[styles.modalButton, styles.cancelButton, { backgroundColor: colors.border }]}
                 onPress={() => setShowReportForm(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.submitButton]}
+                style={[styles.modalButton, styles.submitButton, { backgroundColor: colors.primary }]}
                 onPress={handleSubmitReport}
               >
-                <Text style={styles.submitButtonText}>Submit</Text>
+                <Text style={[styles.submitButtonText, { color: colors.headerText }]}>{t('common.confirm')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -142,10 +147,8 @@ export function HelpSupportScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
-    backgroundColor: '#2563eb',
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 16,
@@ -158,16 +161,13 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 24,
-    color: '#fff',
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#fff',
   },
   section: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 20,
@@ -176,7 +176,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#64748b',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     paddingHorizontal: 16,
@@ -185,7 +184,6 @@ const styles = StyleSheet.create({
   },
   faqItem: {
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
   },
   faqHeader: {
     flexDirection: 'row',
@@ -197,16 +195,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
-    color: '#1e293b',
     marginRight: 8,
   },
   faqChevron: {
     fontSize: 18,
-    color: '#94a3b8',
   },
   faqAnswer: {
     fontSize: 14,
-    color: '#64748b',
     paddingHorizontal: 16,
     paddingBottom: 16,
     lineHeight: 20,
@@ -222,18 +217,15 @@ const styles = StyleSheet.create({
   },
   contactText: {
     fontSize: 16,
-    color: '#2563eb',
     fontWeight: '500',
   },
   reportButton: {
-    backgroundColor: '#2563eb',
     margin: 16,
     borderRadius: 20,
     padding: 16,
     alignItems: 'center',
   },
   reportButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -243,7 +235,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
@@ -251,16 +242,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
     marginBottom: 16,
   },
   reportInput: {
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
-    backgroundColor: '#f8fafc',
     minHeight: 120,
     marginBottom: 16,
   },
@@ -275,19 +263,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f1f5f9',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#64748b',
   },
   submitButton: {
-    backgroundColor: '#2563eb',
   },
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
   },
 });

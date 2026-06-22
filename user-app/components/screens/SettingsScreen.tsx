@@ -14,33 +14,27 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { languages } from '../../i18n';
 import { SettingsStackParamList } from '../../types/navigation';
 
-const DARK_MODE_KEY = 'cuz_events_dark_mode';
 const NOTIFICATIONS_KEY = 'cuz_events_notifications';
-const LANGUAGE_KEY = 'cuz_events_language';
 
 type SettingsNavProp = NativeStackNavigationProp<SettingsStackParamList>;
 
 export function SettingsScreen() {
   const navigation = useNavigation<SettingsNavProp>();
   const { user, logout } = useAuth();
-  const [darkMode, setDarkMode] = useState(false);
+  const { isDark, toggleDark, colors } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const [notifications, setNotifications] = useState(true);
-  const [language, setLanguage] = useState('English');
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(DARK_MODE_KEY).then(v => { if (v) setDarkMode(v === 'true'); });
     AsyncStorage.getItem(NOTIFICATIONS_KEY).then(v => { if (v) setNotifications(v === 'true'); });
-    AsyncStorage.getItem(LANGUAGE_KEY).then(v => { if (v) setLanguage(v); });
   }, []);
-
-  const toggleDarkMode = async (val: boolean) => {
-    setDarkMode(val);
-    await AsyncStorage.setItem(DARK_MODE_KEY, val.toString());
-  };
 
   const toggleNotifications = async (val: boolean) => {
     setNotifications(val);
@@ -48,10 +42,9 @@ export function SettingsScreen() {
   };
 
   const changeLanguage = async (lang: string) => {
-    setLanguage(lang);
+    await setLanguage(lang);
     setShowLanguagePicker(false);
-    await AsyncStorage.setItem(LANGUAGE_KEY, lang);
-    Alert.alert('Language', `App language set to ${lang}. Restart to apply.`);
+    Alert.alert(t('common.done'), t('settings.selectLanguage'));
   };
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -79,150 +72,143 @@ export function SettingsScreen() {
     );
   };
 
+  const langLabel = languages.find(l => l.code === language)?.native || language;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>{'<'}</Text>
+            <Text style={[styles.backText, { color: colors.headerText }]}>{'<'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={[styles.headerTitle, { color: colors.headerText }]}>{t('settings.title')}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => navigation.navigate('EditProfile')}
-          >
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('settings.account')}</Text>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate('EditProfile')}>
             <Text style={styles.menuIcon}>✏️</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Edit Profile</Text>
-              <Text style={styles.menuSubtext}>Name, faculty, profile picture</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.editProfile')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.editProfileSub')}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => navigation.navigate('ChangePassword')}
-          >
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate('ChangePassword')}>
             <Text style={styles.menuIcon}>🔒</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Change Password</Text>
-              <Text style={styles.menuSubtext}>Update your password</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.changePassword')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.changePasswordSub')}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => setShowLogoutConfirm(true)}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => setShowLogoutConfirm(true)}>
             <Text style={styles.menuIcon}>🚪</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Log Out</Text>
-              <Text style={styles.menuSubtext}>Sign out of your account</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.logOut')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.logOutSub')}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          <View style={styles.menuItem}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('settings.preferences')}</Text>
+          <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
             <Text style={styles.menuIcon}>🌙</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Dark Mode</Text>
-              <Text style={styles.menuSubtext}>Toggle dark theme</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.darkMode')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.darkModeSub')}</Text>
             </View>
             <Switch
-              value={darkMode}
-              onValueChange={toggleDarkMode}
-              trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
-              thumbColor={darkMode ? '#2563eb' : '#f8fafc'}
+              value={isDark}
+              onValueChange={toggleDark}
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
+              thumbColor={isDark ? colors.primary : colors.inputBg}
             />
           </View>
 
-          <View style={styles.menuItem}>
+          <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
             <Text style={styles.menuIcon}>🔔</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Notifications</Text>
-              <Text style={styles.menuSubtext}>Event reminders and updates</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.notifications')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.notificationsSub')}</Text>
             </View>
             <Switch
               value={notifications}
               onValueChange={toggleNotifications}
-              trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
-              thumbColor={notifications ? '#2563eb' : '#f8fafc'}
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
+              thumbColor={notifications ? colors.primary : colors.inputBg}
             />
           </View>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => setShowLanguagePicker(true)}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => setShowLanguagePicker(true)}>
             <Text style={styles.menuIcon}>🌐</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Language</Text>
-              <Text style={styles.menuSubtext}>{language}</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.language')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{langLabel}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacy</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert(
-            'Manage Data',
-            'You can request a copy of your data or delete your account by contacting support. Your data is stored securely and used only for app functionality.',
-          )}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('settings.privacy')}</Text>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => Alert.alert(t('settings.manageData'), t('settings.manageDataSub'))}>
             <Text style={styles.menuIcon}>🛡️</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Manage Data</Text>
-              <Text style={styles.menuSubtext}>Control your data</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.manageData')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.manageDataSub')}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL('https://cuzevents.com/privacy')}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => Linking.openURL('https://cuzevents.com/privacy')}>
             <Text style={styles.menuIcon}>📄</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Privacy Policy</Text>
-              <Text style={styles.menuSubtext}>Read our privacy policy</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.privacyPolicy')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.privacyPolicySub')}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={handleDeleteAccount}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={handleDeleteAccount}>
             <Text style={styles.menuIcon}>🗑️</Text>
             <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, styles.deleteText]}>Delete Account</Text>
-              <Text style={styles.menuSubtext}>Permanently remove your account</Text>
+              <Text style={[styles.menuLabel, { color: colors.danger }]}>{t('settings.deleteAccount')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.deleteAccountSub')}</Text>
             </View>
-            <Text style={[styles.menuArrow, styles.deleteArrow]}>›</Text>
+            <Text style={[styles.menuArrow, { color: colors.danger }]}>›</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => setShowAbout(true)}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('settings.app')}</Text>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => setShowAbout(true)}>
             <Text style={styles.menuIcon}>ℹ️</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>About App</Text>
-              <Text style={styles.menuSubtext}>CUZ Events v1.0.0</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.aboutApp')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.aboutAppSub')}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL('https://cuzevents.com/terms')}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => Linking.openURL('https://cuzevents.com/terms')}>
             <Text style={styles.menuIcon}>📋</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Terms of Service</Text>
-              <Text style={styles.menuSubtext}>Read our terms</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.termsOfService')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.termsOfServiceSub')}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('HelpSupport')}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate('HelpSupport')}>
             <Text style={styles.menuIcon}>❓</Text>
             <View style={styles.menuText}>
-              <Text style={styles.menuLabel}>Help & Support</Text>
-              <Text style={styles.menuSubtext}>FAQ, contact support</Text>
+              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.helpSupport')}</Text>
+              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.helpSupportSub')}</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
@@ -233,22 +219,22 @@ export function SettingsScreen() {
 
       <Modal visible={showLanguagePicker} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Language</Text>
-            {['English', 'French', 'Portuguese', 'Swahili'].map(lang => (
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('settings.selectLanguage')}</Text>
+            {languages.map(l => (
               <TouchableOpacity
-                key={lang}
-                style={[styles.langOption, language === lang && styles.langOptionSelected]}
-                onPress={() => changeLanguage(lang)}
+                key={l.code}
+                style={[styles.langOption, { borderBottomColor: colors.border }, language === l.code && { backgroundColor: colors.primaryLight }]}
+                onPress={() => changeLanguage(l.code)}
               >
-                <Text style={[styles.langOptionText, language === lang && styles.langOptionTextSelected]}>
-                  {lang}
+                <Text style={[styles.langOptionText, { color: colors.text }, language === l.code && { color: colors.primary, fontWeight: '600' }]}>
+                  {l.native}
                 </Text>
-                {language === lang && <Text style={styles.langCheck}>✓</Text>}
+                {language === l.code && <Text style={[styles.langCheck, { color: colors.primary }]}>✓</Text>}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowLanguagePicker(false)}>
-              <Text style={styles.modalCloseText}>Cancel</Text>
+            <TouchableOpacity style={[styles.modalCloseButton, { backgroundColor: colors.inputBg }]} onPress={() => setShowLanguagePicker(false)}>
+              <Text style={[styles.modalCloseText, { color: colors.textMuted }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -256,17 +242,17 @@ export function SettingsScreen() {
 
       <Modal visible={showAbout} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>About CUZ Events</Text>
-            <Text style={{ fontSize: 15, color: '#475569', lineHeight: 22, marginTop: 8 }}>Version 1.0.0</Text>
-            <Text style={{ fontSize: 15, color: '#475569', lineHeight: 22, marginTop: 12 }}>
-              CUZ Events is your campus companion for discovering and managing university events and clubs at Cavendish University Zambia.
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('settings.aboutApp')}</Text>
+            <Text style={{ fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginTop: 8 }}>{t('profile.version')}</Text>
+            <Text style={{ fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginTop: 12 }}>
+              {t('app.tagline')}
             </Text>
-            <Text style={{ fontSize: 13, color: '#94a3b8', lineHeight: 22, marginTop: 12 }}>
-              {'\u00A9'} 2026 Cavendish University Zambia. All rights reserved.
+            <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 22, marginTop: 12 }}>
+              {'\u00A9'} 2026 Cavendish University Zambia.
             </Text>
-            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowAbout(false)}>
-              <Text style={styles.modalCloseText}>Close</Text>
+            <TouchableOpacity style={[styles.modalCloseButton, { backgroundColor: colors.inputBg }]} onPress={() => setShowAbout(false)}>
+              <Text style={[styles.modalCloseText, { color: colors.textMuted }]}>{t('common.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -274,15 +260,15 @@ export function SettingsScreen() {
 
       <Modal visible={showLogoutConfirm} animationType="fade" transparent>
         <View style={[styles.modalOverlay, { justifyContent: 'center' }]}>
-          <View style={styles.logoutModal}>
-            <Text style={styles.logoutTitle}>Log Out</Text>
-            <Text style={styles.logoutMessage}>Are you sure you want to log out?</Text>
+          <View style={[styles.logoutModal, { backgroundColor: colors.card }]}>
+            <Text style={[styles.logoutTitle, { color: colors.text }]}>{t('profile.logOut')}</Text>
+            <Text style={[styles.logoutMessage, { color: colors.textSecondary }]}>{t('profile.areYouSureLogout')}</Text>
             <View style={styles.logoutButtons}>
-              <TouchableOpacity style={styles.logoutCancelBtn} onPress={() => setShowLogoutConfirm(false)}>
-                <Text style={styles.logoutCancelText}>Cancel</Text>
+              <TouchableOpacity style={[styles.logoutCancelBtn, { backgroundColor: colors.inputBg }]} onPress={() => setShowLogoutConfirm(false)}>
+                <Text style={[styles.logoutCancelText, { color: colors.textMuted }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.logoutConfirmBtn} onPress={handleLogout}>
-                <Text style={styles.logoutConfirmText}>Log Out</Text>
+              <TouchableOpacity style={[styles.logoutConfirmBtn, { backgroundColor: colors.danger }]} onPress={handleLogout}>
+                <Text style={[styles.logoutConfirmText, { color: '#fff' }]}>{t('profile.logOut')}</Text>
               </TouchableOpacity>
             </View>
           </View>
