@@ -1,7 +1,7 @@
 import { Event, Club, User } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-production-9af6.up.railway.app/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-vf9u.onrender.com/api';
 const ADMIN_STORAGE_KEY = 'cuz_events_admin';
 
 const TOKEN_KEY = 'cuz_events_admin_token';

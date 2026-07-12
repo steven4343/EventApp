@@ -1,7 +1,7 @@
 import { Event, Club } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = process.env.API_URL || process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-production-9af6.up.railway.app/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://eventapp-vf9u.onrender.com/api';
 const TOKEN_KEY = 'cuz_events_user_token';
 
 interface BackendEvent {
