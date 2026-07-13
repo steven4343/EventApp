@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform } from 'react-native';
 import { loadNotifications, getCached, getUnreadCount, markAllRead, AppNotification } from '../utils/notificationStore';
+import { useTheme } from '../context/ThemeContext';
 
-export default function NotificationDropdown() {
+interface NotificationDropdownProps {
+  refreshTrigger?: number;
+}
+
+export default function NotificationDropdown({ refreshTrigger }: NotificationDropdownProps) {
+  const { colors, isDark } = useTheme();
   const [showNotifs, setShowNotifs] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -15,14 +21,20 @@ export default function NotificationDropdown() {
 
   useEffect(() => {
     refreshNotifs();
-    const interval = setInterval(refreshNotifs, 30000);
+    const interval = setInterval(refreshNotifs, 15000);
     return () => clearInterval(interval);
   }, [refreshNotifs]);
+
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      refreshNotifs();
+    }
+  }, [refreshTrigger, refreshNotifs]);
 
   return (
     <View>
       <Pressable
-        style={styles.bellButton}
+        style={[styles.bellButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
         onPress={() => { setShowNotifs(!showNotifs); if (!showNotifs) markAllRead().then(refreshNotifs); }}
       >
         <Text style={styles.bellIcon}>🔔</Text>
@@ -35,17 +47,21 @@ export default function NotificationDropdown() {
       {showNotifs && (
         <>
           <Pressable style={styles.overlay} onPress={() => setShowNotifs(false)} />
-          <View style={styles.dropdown}>
-            <Text style={styles.header}>Notifications</Text>
+          <View style={[styles.dropdown, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+            <Text style={[styles.header, { color: colors.text, borderBottomColor: colors.border }]}>Notifications</Text>
             {notifications.length === 0 ? (
-              <Text style={styles.empty}>No new notifications</Text>
+              <Text style={[styles.empty, { color: colors.textMuted }]}>No new notifications</Text>
             ) : (
               <ScrollView style={styles.scroll} nestedScrollEnabled>
                 {notifications.map(n => (
-                  <Pressable key={n.id} style={[styles.item, !n.read && styles.itemUnread]} onPress={() => setShowNotifs(false)}>
-                    <Text style={styles.itemTitle}>{n.title}</Text>
-                    <Text style={styles.itemBody}>{n.body}</Text>
-                    <Text style={styles.itemTime}>{new Date(n.timestamp).toLocaleDateString()}</Text>
+                  <Pressable
+                    key={n.id}
+                    style={[styles.item, !n.read && { backgroundColor: isDark ? 'rgba(99,102,241,0.1)' : '#eff6ff' }, { borderBottomColor: colors.border }]}
+                    onPress={() => setShowNotifs(false)}
+                  >
+                    <Text style={[styles.itemTitle, { color: colors.primary }]}>{n.title}</Text>
+                    <Text style={[styles.itemBody, { color: colors.text }]}>{n.body}</Text>
+                    <Text style={[styles.itemTime, { color: colors.textMuted }]}>{new Date(n.timestamp).toLocaleString()}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -62,7 +78,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -97,12 +112,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 48,
     right: 0,
-    backgroundColor: '#fff',
     borderRadius: 16,
     paddingVertical: 8,
     minWidth: 280,
     maxHeight: 300,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
@@ -112,15 +125,12 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1e293b',
     paddingHorizontal: 16,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
   },
   empty: {
     fontSize: 14,
-    color: '#94a3b8',
     textAlign: 'center',
     paddingVertical: 20,
   },
@@ -131,25 +141,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f8fafc',
-  },
-  itemUnread: {
-    backgroundColor: '#eff6ff',
   },
   itemTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2563eb',
   },
   itemBody: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
     marginTop: 2,
   },
   itemTime: {
     fontSize: 11,
-    color: '#94a3b8',
     marginTop: 2,
   },
 });

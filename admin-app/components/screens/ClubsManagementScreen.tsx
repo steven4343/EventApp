@@ -42,7 +42,11 @@ const CLUB_CATEGORIES = [
   "Other",
 ];
 
-export default function ClubsManagementScreen() {
+interface ClubsManagementScreenProps {
+  onDataChange?: () => void;
+}
+
+export default function ClubsManagementScreen({ onDataChange }: ClubsManagementScreenProps) {
   const { colors, isDark } = useTheme();
   const r = useResponsive();
   const px = horizontalPadding(r);
@@ -94,6 +98,7 @@ export default function ClubsManagementScreen() {
       setClubs((prev) =>
         prev.map((c) => (c.id === club.id ? { ...c, status: "Active" as const } : c))
       );
+      onDataChange?.();
     } catch {
       Alert.alert("Error", "Failed to approve club");
     } finally {
@@ -108,6 +113,7 @@ export default function ClubsManagementScreen() {
       setClubs((prev) =>
         prev.map((c) => (c.id === club.id ? { ...c, status: "Inactive" as const } : c))
       );
+      onDataChange?.();
     } catch {
       Alert.alert("Error", "Failed to deactivate club");
     } finally {
@@ -122,6 +128,7 @@ export default function ClubsManagementScreen() {
       setClubs((prev) =>
         prev.map((c) => (c.id === club.id ? { ...c, status: "Active" as const } : c))
       );
+      onDataChange?.();
     } catch {
       Alert.alert("Error", "Failed to reactivate club");
     } finally {
@@ -144,6 +151,7 @@ export default function ClubsManagementScreen() {
               try {
                 await adminApi.deleteClub(club.id);
                 setClubs((prev) => prev.filter((c) => c.id !== club.id));
+                onDataChange?.();
               } catch {
                 Alert.alert("Error", "Failed to delete club");
               } finally {
@@ -154,12 +162,13 @@ export default function ClubsManagementScreen() {
         ]
       );
     },
-    []
+    [onDataChange]
   );
 
   const handleClubCreated = (newClub: Club) => {
     setClubs((prev) => [newClub, ...prev]);
     setModalVisible(false);
+    onDataChange?.();
   };
 
   const getCategoryIcon = (category: string): string => {

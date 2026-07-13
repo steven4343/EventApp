@@ -55,3 +55,17 @@ export function getCached(): AppNotification[] {
 export function getUnreadCount(): number {
   return cached.filter(n => !n.read).length;
 }
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await loadNotifications();
+  const notif = cached.find(n => n.id === id);
+  if (notif) {
+    notif.read = true;
+    await persist();
+  }
+}
+
+export function getLatestTimestamp(): string {
+  if (cached.length === 0) return '';
+  return cached[0].timestamp;
+}

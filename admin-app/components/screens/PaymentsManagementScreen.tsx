@@ -42,7 +42,11 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   rejected: { bg: '#FEE2E2', text: '#DC2626' },
 };
 
-export default function PaymentsManagementScreen() {
+interface PaymentsManagementScreenProps {
+  refreshKey?: number;
+}
+
+export default function PaymentsManagementScreen({ refreshKey }: PaymentsManagementScreenProps) {
   const { colors } = useTheme();
   const r = useResponsive();
   const { isMobile, isTablet } = r;
@@ -71,6 +75,12 @@ export default function PaymentsManagementScreen() {
     setLoading(true);
     fetchPayments();
   }, [fetchPayments]);
+
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      fetchPayments();
+    }
+  }, [refreshKey]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

@@ -23,15 +23,15 @@ import CreateEventModal from './CreateEventModal';
 const CATEGORIES = ['', 'Music Concert', 'Conference', 'Sports', 'Church Event', 'Community', 'Workshop'];
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  published: { bg: 'rgba(34, 197, 94, 0.12)', text: '#16a34a' },
-  draft: { bg: 'rgba(245, 158, 11, 0.12)', text: '#d97706' },
-  cancelled: { bg: 'rgba(239, 68, 68, 0.12)', text: '#dc2626' },
+  Published: { bg: 'rgba(34, 197, 94, 0.12)', text: '#16a34a' },
+  Draft: { bg: 'rgba(245, 158, 11, 0.12)', text: '#d97706' },
+  Cancelled: { bg: 'rgba(239, 68, 68, 0.12)', text: '#dc2626' },
 };
 
 const STATUS_COLORS_DARK: Record<string, { bg: string; text: string }> = {
-  published: { bg: 'rgba(74, 222, 128, 0.15)', text: '#4ade80' },
-  draft: { bg: 'rgba(251, 191, 36, 0.15)', text: '#fbbf24' },
-  cancelled: { bg: 'rgba(248, 113, 113, 0.15)', text: '#f87171' },
+  Published: { bg: 'rgba(74, 222, 128, 0.15)', text: '#4ade80' },
+  Draft: { bg: 'rgba(251, 191, 36, 0.15)', text: '#fbbf24' },
+  Cancelled: { bg: 'rgba(248, 113, 113, 0.15)', text: '#f87171' },
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -51,7 +51,7 @@ interface Event {
   date: string;
   time?: string;
   location: string;
-  status: 'published' | 'draft' | 'cancelled';
+  status: 'Published' | 'Draft' | 'Cancelled';
   rating: number;
   reviewCount: number;
   attendeeCount: number;
@@ -82,6 +82,8 @@ interface FeedbackData {
 
 interface EventsManagementScreenProps {
   navigation?: any;
+  onDataChange?: () => void;
+  notifTrigger?: number;
 }
 
 function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
@@ -96,7 +98,7 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
-export default function EventsManagementScreen({ navigation }: EventsManagementScreenProps) {
+export default function EventsManagementScreen({ navigation, onDataChange, notifTrigger }: EventsManagementScreenProps) {
   const { colors, isDark } = useTheme();
   const r = useResponsive();
   const px = horizontalPadding(r);
@@ -109,6 +111,7 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackData | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const getColumns = (): number => {
     if (r.isWideDesktop) return 3;
@@ -145,7 +148,8 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
   }, [fetchEvents]);
 
   const handlePublishToggle = async (event: Event) => {
-    const actionLabel = event.status === 'published' ? 'Unpublish' : 'Publish';
+    const isPublished = event.status === 'Published';
+    const actionLabel = isPublished ? 'Unpublish' : 'Publish';
 
     if (Platform.OS === 'web') {
       if (!confirm(`Are you sure you want to ${actionLabel} "${event.title}"?`)) return;
@@ -159,15 +163,19 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
       if (!confirmed) return;
     }
 
+    setActionLoading(event.id);
     try {
-      if (event.status === 'published') {
+      if (isPublished) {
         await adminApi.unpublishEvent(event.id);
       } else {
         await adminApi.publishEvent(event.id);
       }
-      fetchEvents();
+      await fetchEvents();
+      onDataChange?.();
     } catch (error) {
       Alert.alert('Error', `Failed to ${actionLabel.toLowerCase()} event.`);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -184,11 +192,15 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
       if (!confirmed) return;
     }
 
+    setActionLoading(event.id);
     try {
       await adminApi.deleteEvent(event.id);
-      fetchEvents();
+      await fetchEvents();
+      onDataChange?.();
     } catch (error) {
       Alert.alert('Error', 'Failed to delete event.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -196,13 +208,21 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
     setFeedbackLoading(true);
     try {
       const data = await adminApi.getEventReviews(event.id);
+      const stats = data.stats || {};
+      const reviews = data.reviews || [];
+      const distribution = [0, 0, 0, 0, 0];
+      if (Array.isArray(stats.ratingDistribution)) {
+        stats.ratingDistribution.forEach((d: any) => {
+          if (d.stars >= 1 && d.stars <= 5) distribution[d.stars - 1] = d.count;
+        });
+      }
       setFeedbackModal({
         eventId: event.id,
         eventTitle: event.title,
-        averageRating: data.averageRating || 0,
-        totalReviews: data.totalReviews || 0,
-        distribution: data.distribution || [0, 0, 0, 0, 0],
-        reviews: data.reviews || [],
+        averageRating: stats.averageRating || 0,
+        totalReviews: stats.totalReviews || 0,
+        distribution,
+        reviews,
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to load feedback.');
@@ -227,7 +247,8 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
   };
 
   const renderEventCard = (event: Event) => {
-    const badge = statusColors[event.status] || statusColors.draft;
+    const badge = statusColors[event.status] || statusColors.Draft;
+    const isBusy = actionLoading === event.id;
 
     return (
       <Pressable
@@ -238,6 +259,7 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
             backgroundColor: colors.card,
             shadowColor: colors.shadow,
             borderColor: colors.border,
+            opacity: isBusy ? 0.6 : 1,
             ...(hovered && Platform.OS === 'web'
               ? {
                   transform: [{ translateY: -3 }],
@@ -263,7 +285,7 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
             </Text>
             <View style={[styles.badge, { backgroundColor: badge.bg }]}>
               <Text style={[styles.badgeText, { color: badge.text }]}>
-                {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                {event.status}
               </Text>
             </View>
           </View>
@@ -314,17 +336,18 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
 
           <View style={styles.actionsRow}>
             <Pressable
-              style={[styles.actionBtn, { backgroundColor: event.status === 'published' ? colors.warning : colors.success }]}
+              style={[styles.actionBtn, { backgroundColor: event.status === 'Published' ? colors.warning : colors.success }]}
               onPress={() => handlePublishToggle(event)}
+              disabled={isBusy}
             >
               <Text style={styles.actionBtnText}>
-                {event.status === 'published' ? 'Unpublish' : 'Publish'}
+                {isBusy ? '...' : event.status === 'Published' ? 'Unpublish' : 'Publish'}
               </Text>
             </Pressable>
             <Pressable
               style={[styles.actionBtn, { backgroundColor: colors.primary }]}
               onPress={() => handleOpenFeedback(event)}
-              disabled={feedbackLoading}
+              disabled={feedbackLoading || isBusy}
             >
               <Text style={styles.actionBtnText}>
                 {feedbackLoading ? '...' : 'Feedback'}
@@ -333,6 +356,7 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
             <Pressable
               style={[styles.actionBtn, styles.deleteBtn, { borderColor: colors.danger }]}
               onPress={() => handleDelete(event)}
+              disabled={isBusy}
             >
               <Text style={[styles.deleteBtnText, { color: colors.danger }]}>Delete</Text>
             </Pressable>
@@ -425,7 +449,7 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 100 }}>
-        <NotificationDropdown />
+        <NotificationDropdown refreshTrigger={notifTrigger} />
       </View>
       <ScrollView
         style={{ flex: 1 }}
@@ -472,7 +496,7 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
 
           <View style={[styles.statusBar, { backgroundColor: colors.card }]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusBarContent}>
-              {['', 'published', 'draft', 'cancelled'].map((status) => (
+              {['', 'Published', 'Draft', 'Cancelled'].map((status) => (
                 <TouchableOpacity
                   key={status}
                   style={[styles.statusChip, { backgroundColor: selectedStatus === status ? colors.primary : colors.surface }]}
@@ -530,6 +554,7 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
         onCreated={() => {
           setShowCreateModal(false);
           fetchEvents();
+          onDataChange?.();
         }}
       />
     </View>

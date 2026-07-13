@@ -67,7 +67,11 @@ const STATS_CONFIG = [
   },
 ] as const;
 
-export default function DashboardScreen() {
+interface DashboardScreenProps {
+  refreshKey?: number;
+}
+
+export default function DashboardScreen({ refreshKey }: DashboardScreenProps) {
   const { colors } = useTheme();
   const r = useResponsive();
   const { isMobile, isTablet, isDesktop, isWideDesktop } = r;
@@ -101,6 +105,12 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      fetchStats();
+    }
+  }, [refreshKey]);
 
   const onRefresh = async () => {
     setRefreshing(true);

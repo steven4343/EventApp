@@ -14,8 +14,8 @@ import VerifyScreen from './components/screens/VerifyScreen';
 import PaymentsManagementScreen from './components/screens/PaymentsManagementScreen';
 import { SettingsScreen } from './components/screens/SettingsScreen';
 import { adminApi } from './api';
-import { connectSocket, disconnectSocket } from './services/socket';
-import { addNotification } from './utils/notificationStore';
+import { connectSocket, disconnectSocket, getSocket } from './services/socket';
+import { addNotification, AppNotification } from './utils/notificationStore';
 
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 const WARNING_BEFORE = 60 * 1000;
@@ -24,6 +24,8 @@ function AdminApp() {
   const [admin, setAdmin] = useState<any>(null);
   const [ready, setReady] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTabKey>('Dashboard');
+  const [dataRefreshKey, setDataRefreshKey] = useState(0);
+  const [notifTrigger, setNotifTrigger] = useState(0);
   const { colors } = useTheme();
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -33,6 +35,20 @@ function AdminApp() {
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     if (warningTimer.current) clearTimeout(warningTimer.current);
   };
+
+  const triggerDataRefresh = useCallback(() => {
+    setDataRefreshKey(k => k + 1);
+  }, []);
+
+  const pushNotification = useCallback(async (notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
+    await addNotification({
+      ...notif,
+      id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      read: false,
+    });
+    setNotifTrigger(t => t + 1);
+  }, []);
 
   const doLogout = useCallback(() => {
     clearTimers();
@@ -61,7 +77,6 @@ function AdminApp() {
       const currentAdmin = adminApi.getCurrentAdmin();
       if (currentAdmin) {
         setAdmin(currentAdmin);
-        if (currentAdmin.id) connectSocket(currentAdmin.id);
       }
       setReady(true);
     })();
@@ -86,38 +101,70 @@ function AdminApp() {
     return () => subscription.remove();
   }, [admin, resetInactivityTimer, doLogout]);
 
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const notifiedIds = useRef<Set<string>>(new Set());
-
   useEffect(() => {
-    if (!admin) return;
-    const checkNewEvents = async () => {
-      try {
-        const events = await adminApi.getEvents('Published');
-        for (const event of events) {
-          if (notifiedIds.current.has(event.id)) continue;
-          notifiedIds.current.add(event.id);
-          await addNotification({
-            id: `notif_${event.id}_${Date.now()}`,
-            title: 'New Event Posted',
-            body: event.title,
-            timestamp: new Date().toISOString(),
-            read: false,
-            eventId: event.id,
-          });
-        }
-      } catch {}
+    if (!admin?.id) return;
+
+    const socket = connectSocket(admin.id);
+
+    const onEventStatus = (data: { id: string; title: string; status: string; timestamp: string }) => {
+      pushNotification({
+        title: 'Event Status Changed',
+        body: `"${data.title}" is now ${data.status}`,
+        eventId: data.id,
+      });
+      triggerDataRefresh();
     };
-    checkNewEvents();
-    pollingRef.current = setInterval(checkNewEvents, 60000);
+
+    const onEventCreated = (data: { id: string; title: string; status: string }) => {
+      pushNotification({
+        title: 'New Event Created',
+        body: data.title,
+        eventId: data.id,
+      });
+      triggerDataRefresh();
+    };
+
+    const onClubCreated = (data: { id: string; name: string }) => {
+      pushNotification({
+        title: 'New Club Created',
+        body: data.name,
+      });
+      triggerDataRefresh();
+    };
+
+    const onTicketVerified = (data: { ticketId: string; eventTitle: string }) => {
+      pushNotification({
+        title: 'Ticket Verified',
+        body: `${data.eventTitle} - ticket scanned`,
+      });
+      triggerDataRefresh();
+    };
+
+    const onFeedbackSubmitted = (data: { eventId: string; eventTitle: string; rating: number }) => {
+      pushNotification({
+        title: 'New Feedback',
+        body: `${data.eventTitle} - ${data.rating}★ rating`,
+        eventId: data.eventId,
+      });
+    };
+
+    socket.on('event:status', onEventStatus);
+    socket.on('event:created', onEventCreated);
+    socket.on('club:created', onClubCreated);
+    socket.on('ticket:verified', onTicketVerified);
+    socket.on('feedback:submitted', onFeedbackSubmitted);
+
     return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
+      socket.off('event:status', onEventStatus);
+      socket.off('event:created', onEventCreated);
+      socket.off('club:created', onClubCreated);
+      socket.off('ticket:verified', onTicketVerified);
+      socket.off('feedback:submitted', onFeedbackSubmitted);
     };
-  }, [admin]);
+  }, [admin, pushNotification, triggerDataRefresh]);
 
   const handleLogin = (loggedInAdmin: any) => {
     setAdmin(loggedInAdmin);
-    if (loggedInAdmin?.id) connectSocket(loggedInAdmin.id);
     resetInactivityTimer();
   };
 
@@ -139,13 +186,13 @@ function AdminApp() {
 
   const renderScreen = () => {
     switch (activeTab) {
-      case 'Dashboard': return <DashboardScreen />;
-      case 'Events': return <EventsManagementScreen />;
-      case 'Clubs': return <ClubsManagementScreen />;
+      case 'Dashboard': return <DashboardScreen refreshKey={dataRefreshKey} />;
+      case 'Events': return <EventsManagementScreen onDataChange={triggerDataRefresh} notifTrigger={notifTrigger} />;
+      case 'Clubs': return <ClubsManagementScreen onDataChange={triggerDataRefresh} />;
       case 'Verify': return <VerifyScreen />;
-      case 'Payments': return <PaymentsManagementScreen />;
+      case 'Payments': return <PaymentsManagementScreen refreshKey={dataRefreshKey} />;
       case 'Settings': return <SettingsScreen admin={admin} onLogout={handleLogout} />;
-      default: return <DashboardScreen />;
+      default: return <DashboardScreen refreshKey={dataRefreshKey} />;
     }
   };
 
@@ -155,7 +202,6 @@ function AdminApp() {
       <View style={{ flex: 1 }}>
         {renderScreen()}
       </View>
-
     </View>
   );
 }

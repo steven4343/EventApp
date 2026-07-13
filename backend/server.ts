@@ -445,6 +445,7 @@ app.post('/api/events', authenticate, async (req, res) => {
       event.publishedAt = now;
     }
     await database.addEvent(event);
+    io.emit('event:created', { id: event.id, title: event.title, status: event.status, timestamp: new Date().toISOString() });
     if (event.status === 'Published') {
       sendPushNotifications('New Event Posted', event.title);
       emitStatusChange({ id: event.id, title: event.title, status: 'Published' });
@@ -537,6 +538,7 @@ app.post('/api/clubs', authenticate, async (req, res) => {
       established: new Date().toISOString().split('T')[0],
     };
     await database.addClub(club);
+    io.emit('club:created', { id: club.id, name: club.name, timestamp: new Date().toISOString() });
     res.status(201).json(club);
   } catch (e: any) {
     console.error('Failed to create club:', e);
@@ -643,6 +645,11 @@ app.get('/api/tickets', async (req, res) => {
 app.put('/api/tickets/:id/verify', authenticate, async (req, res) => {
   const { id } = req.params;
   await database.updateTicketStatus(id, 'verified');
+  const ticket = await database.getTicketById(id);
+  if (ticket) {
+    const event = await database.getEventById(ticket.eventId);
+    io.emit('ticket:verified', { ticketId: id, eventTitle: event?.title || 'Unknown', timestamp: new Date().toISOString() });
+  }
   res.json({ message: 'Ticket verified' });
 });
 
@@ -938,6 +945,7 @@ app.post('/api/reviews', authenticate, async (req, res) => {
   };
   await database.addReview(review);
   const updated = await database.getEventById(review.itemId);
+  io.emit('feedback:submitted', { eventId: review.itemId, eventTitle: updated?.title || 'Unknown', rating: review.rating, timestamp: new Date().toISOString() });
   res.status(201).json({ review, event: updated });
 });
 
