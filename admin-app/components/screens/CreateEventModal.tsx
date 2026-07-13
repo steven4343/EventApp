@@ -18,12 +18,12 @@ import { useTheme } from '../../context/ThemeContext';
 import { adminApi } from '../../api';
 
 const CATEGORIES = [
-  'Music Concert',
-  'Conference',
+  'Social',
+  'Cultural',
   'Sports',
-  'Church Event',
-  'Community',
-  'Workshop',
+  'Academic',
+  'Entertainment',
+  'Partnership',
 ];
 
 const LOCATIONS = [
@@ -51,7 +51,6 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 interface Club {
   id: string;
@@ -178,6 +177,20 @@ export default function CreateEventModal({ visible, onClose, onCreated }: Create
   const maxDay = getDaysInMonth(selectedMonth, selectedYear);
   const validDays = Array.from({ length: maxDay }, (_, i) => i + 1);
 
+  const handleDateInputChange = (dateStr: string) => {
+    if (!dateStr) return;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      setSelectedYear(parseInt(parts[0], 10));
+      setSelectedMonth(parseInt(parts[1], 10) - 1);
+      setSelectedDay(parseInt(parts[2], 10));
+    }
+  };
+
+  const getISODateString = () => {
+    return `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert('Required', 'Please enter a title.');
@@ -273,29 +286,61 @@ export default function CreateEventModal({ visible, onClose, onCreated }: Create
     );
   };
 
-  const renderDatePicker = () => (
-    <View style={[styles.datePickerContainer, { backgroundColor: colors.card || '#ffffff' }]}>
-      <View style={styles.datePickerHeader}>
-        <Text style={[styles.pickerTitle, { color: colors.text || '#111827' }]}>Select Date</Text>
-        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-          <Text style={[styles.pickerDone, { color: colors.primary || '#6366f1' }]}>Done</Text>
-        </TouchableOpacity>
+  const renderDatePicker = () => {
+    if (Platform.OS === 'web') {
+      return (
+        <View style={[styles.datePickerContainer, { backgroundColor: colors.card || '#ffffff' }]}>
+          <View style={styles.datePickerHeader}>
+            <Text style={[styles.pickerTitle, { color: colors.text || '#111827' }]}>Select Date</Text>
+            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+              <Text style={[styles.pickerDone, { color: colors.primary || '#6366f1' }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: 24 }}>
+            <input
+              type="date"
+              value={getISODateString()}
+              onChange={(e: any) => handleDateInputChange(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                fontSize: 15,
+                borderRadius: 14,
+                border: `1px solid ${colors.border || '#e5e7eb'}`,
+                backgroundColor: colors.background || '#f9fafb',
+                color: colors.text || '#111827',
+                outline: 'none',
+              }}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.datePickerContainer, { backgroundColor: colors.card || '#ffffff' }]}>
+        <View style={styles.datePickerHeader}>
+          <Text style={[styles.pickerTitle, { color: colors.text || '#111827' }]}>Select Date</Text>
+          <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+            <Text style={[styles.pickerDone, { color: colors.primary || '#6366f1' }]}>Done</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.dateColumns}>
+          {renderScrollColumn(yearScrollRef, YEARS, selectedYear, (v: number) => {
+            setSelectedYear(v);
+            const maxD = getDaysInMonth(selectedMonth, v);
+            if (selectedDay > maxD) setSelectedDay(maxD);
+          }, 100)}
+          {renderScrollColumn(monthScrollRef, MONTHS, selectedMonth, (v: number) => {
+            setSelectedMonth(v);
+            const maxD = getDaysInMonth(v, selectedYear);
+            if (selectedDay > maxD) setSelectedDay(maxD);
+          }, 140)}
+          {renderScrollColumn(dayScrollRef, validDays, selectedDay, setSelectedDay, 100)}
+        </View>
       </View>
-      <View style={styles.dateColumns}>
-        {renderScrollColumn(yearScrollRef, YEARS, selectedYear, (v: number) => {
-          setSelectedYear(v);
-          const maxD = getDaysInMonth(selectedMonth, v);
-          if (selectedDay > maxD) setSelectedDay(maxD);
-        }, 100)}
-        {renderScrollColumn(monthScrollRef, MONTHS, selectedMonth, (v: number) => {
-          setSelectedMonth(v);
-          const maxD = getDaysInMonth(v, selectedYear);
-          if (selectedDay > maxD) setSelectedDay(maxD);
-        }, 140)}
-        {renderScrollColumn(dayScrollRef, validDays, selectedDay, setSelectedDay, 80)}
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderTimePicker = () => (
     <View style={[styles.datePickerContainer, { backgroundColor: colors.card || '#ffffff' }]}>

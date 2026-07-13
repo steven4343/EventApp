@@ -21,7 +21,7 @@ import NotificationDropdown from '../NotificationDropdown';
 import CreateEventModal from './CreateEventModal';
 import { normalizeImage } from '../../utils/image';
 
-const CATEGORIES = ['', 'Music Concert', 'Conference', 'Sports', 'Church Event', 'Community', 'Workshop'];
+const CATEGORIES = ['', 'Social', 'Cultural', 'Sports', 'Academic', 'Entertainment', 'Partnership'];
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   Published: { bg: 'rgba(34, 197, 94, 0.12)', text: '#16a34a' },
@@ -37,12 +37,12 @@ const STATUS_COLORS_DARK: Record<string, { bg: string; text: string }> = {
 
 const CATEGORY_ICONS: Record<string, string> = {
   '': '📅',
-  'Music Concert': '🎵',
-  'Conference': '🎤',
+  'Social': '🤝',
+  'Cultural': '🎭',
   'Sports': '⚽',
-  'Church Event': '⛪',
-  'Community': '🤝',
-  'Workshop': '🛠️',
+  'Academic': '📚',
+  'Entertainment': '🎬',
+  'Partnership': '🤝',
 };
 
 interface Event {
