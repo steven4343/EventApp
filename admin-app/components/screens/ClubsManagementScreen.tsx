@@ -18,6 +18,7 @@ import { LoadingSkeleton } from "../ui/LoadingSkeleton";
 import { EmptyState } from "../ui/EmptyState";
 import { Club } from "../../types";
 import CreateClubModal from "./CreateClubModal";
+import { normalizeClubImage } from "../../utils/image";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   Active: { bg: "rgba(34, 197, 94, 0.12)", text: "#16a34a" },
@@ -210,7 +211,7 @@ export default function ClubsManagementScreen({ onDataChange }: ClubsManagementS
         ]}
       >
         {club.image ? (
-          <Image source={{ uri: club.image }} style={styles.cardImage} resizeMode="cover" />
+          <Image source={normalizeClubImage(club.image)} style={styles.cardImage} resizeMode="cover" />
         ) : (
           <View style={[styles.cardImagePlaceholder, { backgroundColor: colors.surface }]}>
             <Text style={styles.categoryIcon}>{getCategoryIcon(club.category)}</Text>

@@ -19,6 +19,7 @@ import { LoadingSkeleton } from '../ui/LoadingSkeleton';
 import { EmptyState } from '../ui/EmptyState';
 import NotificationDropdown from '../NotificationDropdown';
 import CreateEventModal from './CreateEventModal';
+import { normalizeImage } from '../../utils/image';
 
 const CATEGORIES = ['', 'Music Concert', 'Conference', 'Sports', 'Church Event', 'Community', 'Workshop'];
 
@@ -56,6 +57,7 @@ interface Event {
   reviewCount: number;
   attendeeCount: number;
   imageUrl?: string;
+  image?: string;
   description?: string;
   price?: number;
   maxCapacity?: number;
@@ -270,8 +272,8 @@ export default function EventsManagementScreen({ navigation, onDataChange, notif
           },
         ]}
       >
-        {event.imageUrl ? (
-          <Image source={{ uri: event.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+        {(event.image || event.imageUrl) ? (
+          <Image source={normalizeImage(event.image || event.imageUrl)} style={styles.cardImage} resizeMode="cover" />
         ) : (
           <View style={[styles.cardImagePlaceholder, { backgroundColor: colors.surface }]}>
             <Text style={styles.categoryIcon}>{CATEGORY_ICONS[event.category] || '📅'}</Text>
