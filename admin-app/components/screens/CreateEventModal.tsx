@@ -196,6 +196,7 @@ export default function CreateEventModal({ visible, onClose, onCreated }: Create
 
     setSubmitting(true);
     try {
+      const finalImage = imageUrl.trim() || imageUri || '';
       const eventData = {
         title: title.trim(),
         date: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`,
@@ -205,11 +206,20 @@ export default function CreateEventModal({ visible, onClose, onCreated }: Create
         price: price ? parseFloat(price) : 0,
         maxCapacity: maxCapacity ? parseInt(maxCapacity, 10) : 0,
         clubId: selectedClubId || undefined,
-        imageUrl: imageUrl.trim() || imageUri || undefined,
+        image: finalImage || undefined,
         description: description.trim(),
       };
 
-      await adminApi.createEvent(eventData);
+      const created = await adminApi.createEvent(eventData);
+
+      if (finalImage) {
+        try {
+          await adminApi.uploadImage('event', created.id, finalImage);
+        } catch (imgErr) {
+          console.warn('Image upload failed, event created without image:', imgErr);
+        }
+      }
+
       onCreated();
     } catch (error) {
       Alert.alert('Error', 'Failed to create event. Please try again.');

@@ -140,6 +140,18 @@ class AdminApi {
     await this.checkAuth(await fetch(`${BASE_URL}/events/${id}`, { method: 'DELETE', headers: this.authHeaders() }));
   }
 
+  async uploadImage(entityType: 'event' | 'club' | 'user', entityId: string, imageData: string): Promise<void> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/images`, {
+      method: 'POST',
+      headers: this.authHeaders(),
+      body: JSON.stringify({ entityType, entityId, imageData }),
+    }));
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to upload image' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+  }
+
   async getClubs(status?: string): Promise<Club[]> {
     const url = status ? `${BASE_URL}/clubs?status=${status}` : `${BASE_URL}/clubs`;
     const res = await this.checkAuth(await fetch(url, { headers: this.authHeaders() }));

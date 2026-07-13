@@ -127,6 +127,13 @@ export default function CreateClubModal({ visible, onClose, onCreated }: Props) 
         reviews: 0,
       };
       const newClub = await adminApi.createClub(clubData);
+      if (finalImage) {
+        try {
+          await adminApi.uploadImage('club', newClub.id, finalImage);
+        } catch (imgErr) {
+          console.warn('Image upload failed, club created without image:', imgErr);
+        }
+      }
       onCreated(newClub);
       resetForm();
     } catch (err: any) {
