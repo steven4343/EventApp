@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,11 @@ import {
   Platform,
   Alert,
   RefreshControl,
-  Animated,
-  Dimensions,
+  Pressable,
+  Image,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { useResponsive, horizontalPadding, getCardWidth } from '../../theme/responsive';
+import { useResponsive, horizontalPadding } from '../../theme/responsive';
 import { adminApi } from '../../api';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { LoadingSkeleton } from '../ui/LoadingSkeleton';
@@ -23,24 +23,25 @@ import CreateEventModal from './CreateEventModal';
 const CATEGORIES = ['', 'Music Concert', 'Conference', 'Sports', 'Church Event', 'Community', 'Workshop'];
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  published: { bg: '#22c55e20', text: '#22c55e' },
-  draft: { bg: '#eab30820', text: '#eab308' },
-  cancelled: { bg: '#ef444420', text: '#ef4444' },
+  published: { bg: 'rgba(34, 197, 94, 0.12)', text: '#16a34a' },
+  draft: { bg: 'rgba(245, 158, 11, 0.12)', text: '#d97706' },
+  cancelled: { bg: 'rgba(239, 68, 68, 0.12)', text: '#dc2626' },
 };
 
-const StarRating = ({ rating, size = 14 }: { rating: number; size?: number }) => {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Text key={star} style={{ fontSize: size, color: star <= Math.round(rating) ? '#f59e0b' : '#d1d5db' }}>
-          ★
-        </Text>
-      ))}
-      <Text style={{ fontSize: 12, color: '#9ca3af', marginLeft: 4 }}>
-        {rating > 0 ? rating.toFixed(1) : 'N/A'}
-      </Text>
-    </View>
-  );
+const STATUS_COLORS_DARK: Record<string, { bg: string; text: string }> = {
+  published: { bg: 'rgba(74, 222, 128, 0.15)', text: '#4ade80' },
+  draft: { bg: 'rgba(251, 191, 36, 0.15)', text: '#fbbf24' },
+  cancelled: { bg: 'rgba(248, 113, 113, 0.15)', text: '#f87171' },
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  '': '📅',
+  'Music Concert': '🎵',
+  'Conference': '🎤',
+  'Sports': '⚽',
+  'Church Event': '⛪',
+  'Community': '🤝',
+  'Workshop': '🛠️',
 };
 
 interface Event {
@@ -83,11 +84,23 @@ interface EventsManagementScreenProps {
   navigation?: any;
 }
 
+function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Text key={star} style={{ fontSize: size, color: star <= Math.round(rating) ? '#f59e0b' : '#d1d5db' }}>
+          ★
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 export default function EventsManagementScreen({ navigation }: EventsManagementScreenProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const r = useResponsive();
-  const { isMobile, isTablet, isDesktop } = r;
   const px = horizontalPadding(r);
+  const statusColors = isDark ? STATUS_COLORS_DARK : STATUS_COLORS;
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,7 +109,15 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackData | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const scrollX = useRef(new Animated.Value(0)).current;
+
+  const getColumns = (): number => {
+    if (r.isWideDesktop) return 3;
+    if (r.isDesktop) return 3;
+    if (r.isTablet) return 2;
+    return 1;
+  };
+
+  const columns = getColumns();
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -124,7 +145,6 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
   }, [fetchEvents]);
 
   const handlePublishToggle = async (event: Event) => {
-    const action = event.status === 'published' ? 'unpublish' : 'publish';
     const actionLabel = event.status === 'published' ? 'Unpublish' : 'Publish';
 
     if (Platform.OS === 'web') {
@@ -147,7 +167,7 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
       }
       fetchEvents();
     } catch (error) {
-      Alert.alert('Error', `Failed to ${action} event.`);
+      Alert.alert('Error', `Failed to ${actionLabel.toLowerCase()} event.`);
     }
   };
 
@@ -206,105 +226,119 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
     }
   };
 
-  const getGridColumns = () => {
-    if (isDesktop) return 3;
-    if (isTablet) return 2;
-    return 1;
-  };
-
   const renderEventCard = (event: Event) => {
-    const statusColor = STATUS_COLORS[event.status] || STATUS_COLORS.draft;
+    const badge = statusColors[event.status] || statusColors.draft;
 
     return (
-      <View
+      <Pressable
         key={event.id}
-        style={[
+        style={({ hovered }) => [
           styles.card,
           {
-            backgroundColor: colors.card || '#ffffff',
-            width: isMobile ? '100%' : getCardWidth(r.width - px * 2, isDesktop ? 3 : 2, 16),
-            shadowColor: '#000',
+            backgroundColor: colors.card,
+            shadowColor: colors.shadow,
+            borderColor: colors.border,
+            ...(hovered && Platform.OS === 'web'
+              ? {
+                  transform: [{ translateY: -3 }],
+                  shadowColor: colors.primary,
+                  shadowOpacity: 0.2,
+                }
+              : {}),
           },
-          Platform.OS === 'web' && styles.cardWeb,
         ]}
       >
         {event.imageUrl ? (
-          <View style={[styles.cardImage, { backgroundColor: colors.border || '#e5e7eb' }]}>
-            <Text style={styles.cardImagePlaceholder}>📷</Text>
-          </View>
+          <Image source={{ uri: event.imageUrl }} style={styles.cardImage} resizeMode="cover" />
         ) : (
-          <View style={[styles.cardImage, { backgroundColor: colors.border || '#e5e7eb' }]}>
-            <Text style={styles.cardImagePlaceholder}>🎉</Text>
+          <View style={[styles.cardImagePlaceholder, { backgroundColor: colors.surface }]}>
+            <Text style={styles.categoryIcon}>{CATEGORY_ICONS[event.category] || '📅'}</Text>
           </View>
         )}
 
         <View style={styles.cardBody}>
-          <View style={styles.cardTopRow}>
-            <Text style={[styles.cardCategory, { color: colors.primary || '#6366f1' }]} numberOfLines={1}>
-              {event.category || 'Uncategorized'}
+          <View style={styles.cardHeader}>
+            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+              {event.title}
             </Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
-              <Text style={[styles.statusText, { color: statusColor.text }]}>
+            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+              <Text style={[styles.badgeText, { color: badge.text }]}>
                 {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
               </Text>
             </View>
           </View>
 
-          <Text style={[styles.cardTitle, { color: colors.text || '#111827' }]} numberOfLines={2}>
-            {event.title}
-          </Text>
-
-          <View style={styles.cardInfo}>
-            <Text style={[styles.cardInfoText, { color: colors.textSecondary || '#6b7280' }]}>
-              📅 {formatDate(event.date)}
-            </Text>
-            <Text style={[styles.cardInfoText, { color: colors.textSecondary || '#6b7280' }]} numberOfLines={1}>
-              📍 {event.location}
-            </Text>
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Text style={[styles.metaLabel, { color: colors.textMuted }]}>Date</Text>
+              <Text style={[styles.metaValue, { color: colors.textSecondary }]}>
+                📅 {formatDate(event.date)}
+              </Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Text style={[styles.metaLabel, { color: colors.textMuted }]}>Category</Text>
+              <Text style={[styles.metaValue, { color: colors.textSecondary }]}>
+                {CATEGORY_ICONS[event.category] || '📅'} {event.category || 'Uncategorized'}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.cardStats}>
-            <StarRating rating={event.rating} />
-            <Text style={[styles.reviewCount, { color: colors.textSecondary || '#9ca3af' }]}>
-              ({event.reviewCount || 0})
-            </Text>
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Text style={[styles.metaLabel, { color: colors.textMuted }]}>Location</Text>
+              <Text style={[styles.metaValue, { color: colors.textSecondary }]} numberOfLines={1}>
+                📍 {event.location}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.cardFooter}>
-            <Text style={[styles.attendeeText, { color: colors.textSecondary || '#6b7280' }]}>
-              👥 {event.attendeeCount || 0} attendees
-            </Text>
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Text style={[styles.metaLabel, { color: colors.textMuted }]}>Rating</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <StarRating rating={event.rating} size={13} />
+                <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                  {event.rating > 0 ? event.rating.toFixed(1) : 'N/A'} ({event.reviewCount || 0})
+                </Text>
+              </View>
+            </View>
+            <View style={styles.metaItem}>
+              <Text style={[styles.metaLabel, { color: colors.textMuted }]}>Attendees</Text>
+              <Text style={[styles.metaValue, { color: colors.textSecondary }]}>
+                👥 {event.attendeeCount || 0}
+              </Text>
+            </View>
           </View>
 
-          <View style={[styles.cardActions, { borderTopColor: colors.border || '#f3f4f6' }]}>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: event.status === 'published' ? '#eab30815' : '#22c55e15' }]}
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.actionsRow}>
+            <Pressable
+              style={[styles.actionBtn, { backgroundColor: event.status === 'published' ? colors.warning : colors.success }]}
               onPress={() => handlePublishToggle(event)}
             >
-              <Text style={[styles.actionBtnText, { color: event.status === 'published' ? '#eab308' : '#22c55e' }]}>
+              <Text style={styles.actionBtnText}>
                 {event.status === 'published' ? 'Unpublish' : 'Publish'}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#6366f115' }]}
+            </Pressable>
+            <Pressable
+              style={[styles.actionBtn, { backgroundColor: colors.primary }]}
               onPress={() => handleOpenFeedback(event)}
               disabled={feedbackLoading}
             >
-              <Text style={[styles.actionBtnText, { color: '#6366f1' }]}>
+              <Text style={styles.actionBtnText}>
                 {feedbackLoading ? '...' : 'Feedback'}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#ef444415' }]}
+            </Pressable>
+            <Pressable
+              style={[styles.actionBtn, styles.deleteBtn, { borderColor: colors.danger }]}
               onPress={() => handleDelete(event)}
             >
-              <Text style={[styles.actionBtnText, { color: '#ef4444' }]}>Delete</Text>
-            </TouchableOpacity>
+              <Text style={[styles.deleteBtnText, { color: colors.danger }]}>Delete</Text>
+            </Pressable>
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -315,65 +349,57 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
 
     return (
       <View style={styles.modalOverlay}>
-        <View style={[styles.feedbackModal, { backgroundColor: colors.card || '#ffffff' }]}>
+        <View style={[styles.feedbackModal, { backgroundColor: colors.card }]}>
           <View style={styles.feedbackHeader}>
-            <Text style={[styles.feedbackTitle, { color: colors.text || '#111827' }]}>
+            <Text style={[styles.feedbackTitle, { color: colors.text }]}>
               Feedback: {feedbackModal.eventTitle}
             </Text>
             <TouchableOpacity onPress={() => setFeedbackModal(null)}>
-              <Text style={[styles.closeBtn, { color: colors.textSecondary || '#6b7280' }]}>✕</Text>
+              <Text style={[styles.closeBtn, { color: colors.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.feedbackSummary}>
-            <Text style={[styles.bigRating, { color: colors.text || '#111827' }]}>
+            <Text style={[styles.bigRating, { color: colors.text }]}>
               {feedbackModal.averageRating.toFixed(1)}
             </Text>
             <StarRating rating={feedbackModal.averageRating} size={20} />
-            <Text style={[styles.totalReviews, { color: colors.textSecondary || '#9ca3af' }]}>
+            <Text style={[styles.totalReviews, { color: colors.textSecondary }]}>
               {feedbackModal.totalReviews} reviews
             </Text>
           </View>
 
           <View style={styles.distributionSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text || '#111827' }]}>Rating Distribution</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Rating Distribution</Text>
             {[5, 4, 3, 2, 1].map((star) => {
               const count = feedbackModal.distribution[star - 1] || 0;
               const percentage = maxDist > 0 ? (count / maxDist) * 100 : 0;
               return (
                 <View key={star} style={styles.distributionRow}>
-                  <Text style={[styles.distLabel, { color: colors.textSecondary || '#6b7280' }]}>{star}★</Text>
-                  <View style={[styles.distBarBg, { backgroundColor: colors.border || '#e5e7eb' }]}>
+                  <Text style={[styles.distLabel, { color: colors.textSecondary }]}>{star}★</Text>
+                  <View style={[styles.distBarBg, { backgroundColor: colors.border }]}>
                     <View style={[styles.distBarFill, { width: `${percentage}%`, backgroundColor: '#f59e0b' }]} />
                   </View>
-                  <Text style={[styles.distCount, { color: colors.textSecondary || '#9ca3af' }]}>{count}</Text>
+                  <Text style={[styles.distCount, { color: colors.textMuted }]}>{count}</Text>
                 </View>
               );
             })}
           </View>
 
           <View style={styles.reviewsSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text || '#111827' }]}>Individual Reviews</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Individual Reviews</Text>
             {feedbackModal.reviews.length === 0 ? (
-              <Text style={[styles.noReviews, { color: colors.textSecondary || '#9ca3af' }]}>
-                No reviews yet.
-              </Text>
+              <Text style={[styles.noReviews, { color: colors.textMuted }]}>No reviews yet.</Text>
             ) : (
               <ScrollView style={styles.reviewsList} showsVerticalScrollIndicator={false}>
                 {feedbackModal.reviews.map((review) => (
-                  <View key={review.id} style={[styles.reviewCard, { borderColor: colors.border || '#f3f4f6' }]}>
+                  <View key={review.id} style={[styles.reviewCard, { borderColor: colors.border }]}>
                     <View style={styles.reviewHeader}>
-                      <Text style={[styles.reviewerName, { color: colors.text || '#111827' }]}>
-                        {review.userName}
-                      </Text>
+                      <Text style={[styles.reviewerName, { color: colors.text }]}>{review.userName}</Text>
                       <StarRating rating={review.rating} size={12} />
                     </View>
-                    <Text style={[styles.reviewComment, { color: colors.textSecondary || '#6b7280' }]}>
-                      {review.comment}
-                    </Text>
-                    <Text style={[styles.reviewDate, { color: colors.textSecondary || '#9ca3af' }]}>
-                      {formatDate(review.createdAt)}
-                    </Text>
+                    <Text style={[styles.reviewComment, { color: colors.textSecondary }]}>{review.comment}</Text>
+                    <Text style={[styles.reviewDate, { color: colors.textMuted }]}>{formatDate(review.createdAt)}</Text>
                   </View>
                 ))}
               </ScrollView>
@@ -384,128 +410,117 @@ export default function EventsManagementScreen({ navigation }: EventsManagementS
     );
   };
 
+  const PlusButton = () => (
+    <Pressable
+      style={({ hovered }) => [
+        styles.plusBtn,
+        hovered && Platform.OS === 'web' && { opacity: 0.85 },
+      ]}
+      onPress={() => setShowCreateModal(true)}
+    >
+      <Text style={styles.plusBtnText}>+ New</Text>
+    </Pressable>
+  );
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background || '#f9fafb' }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 100 }}>
         <NotificationDropdown />
       </View>
-      <ScreenHeader
-        title="Events Management"
-        rightAction={
-          <TouchableOpacity
-            style={[styles.newBtn, { backgroundColor: colors.primary || '#6366f1' }]}
-            onPress={() => setShowCreateModal(true)}
-          >
-            <Text style={styles.newBtnText}>+ New</Text>
-          </TouchableOpacity>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.contentContainer,
+          (r.isDesktop || r.isWideDesktop) && styles.centeredContent,
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
-      />
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.filterBar, { backgroundColor: colors.card || '#ffffff' }]}
-        contentContainerStyle={styles.filterBarContent}
       >
-        {CATEGORIES.map((cat) => (
-          <TouchableOpacity
-            key={cat}
-            style={[
-              styles.filterChip,
-              {
-                backgroundColor: selectedCategory === cat ? (colors.primary || '#6366f1') : (colors.border || '#f3f4f6'),
-              },
-            ]}
-            onPress={() => setSelectedCategory(cat)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                {
-                  color: selectedCategory === cat ? '#ffffff' : (colors.textSecondary || '#6b7280'),
-                },
-              ]}
-            >
-              {cat || 'All'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.statusBar, { backgroundColor: colors.card || '#ffffff' }]}
-        contentContainerStyle={styles.statusBarContent}
-      >
-        {['', 'published', 'draft', 'cancelled'].map((status) => (
-          <TouchableOpacity
-            key={status}
-            style={[
-              styles.statusChip,
-              {
-                backgroundColor: selectedStatus === status ? (colors.primary || '#6366f1') : (colors.border || '#f3f4f6'),
-              },
-            ]}
-            onPress={() => setSelectedStatus(status)}
-          >
-            <Text
-              style={[
-                styles.statusChipText,
-                {
-                  color: selectedStatus === status ? '#ffffff' : (colors.textSecondary || '#6b7280'),
-                },
-              ]}
-            >
-              {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'All Status'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {loading ? (
-        <LoadingSkeleton count={4} />
-      ) : filteredEvents.length === 0 ? (
-        <EmptyState
-          icon="📅"
-          title="No Events Found"
-          message="Create your first event or adjust your filters."
-        />
-      ) : (
-        <ScrollView
-          style={styles.eventsList}
-          contentContainerStyle={[
-            styles.eventsGrid,
-            {
-              paddingHorizontal: px,
-            },
+        <View
+          style={[
+            styles.inner,
+            { paddingHorizontal: px },
+            (r.isDesktop || r.isWideDesktop) && styles.maxWidth,
           ]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-          <View
-            style={[
-              styles.gridContainer,
-              {
-                flexDirection: isMobile ? 'column' : 'row',
-                flexWrap: 'wrap',
-                gap: 16,
-              },
-            ]}
-          >
-            {filteredEvents.map((event) => (
-              <View
-                key={event.id}
-                style={{
-                  width: isMobile ? '100%' : `${100 / getGridColumns() - 2}%`,
-                  minWidth: isMobile ? '100%' : 300,
-                }}
-              >
-                {renderEventCard(event)}
-              </View>
-            ))}
+          <ScreenHeader
+            title="Events Management"
+            subtitle={`${filteredEvents.length} event${filteredEvents.length !== 1 ? 's' : ''} total`}
+            action={<PlusButton />}
+          />
+
+          <View style={[styles.filterBar, { backgroundColor: colors.card }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterBarContent}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.filterChip, { backgroundColor: selectedCategory === cat ? colors.primary : colors.surface }]}
+                  onPress={() => setSelectedCategory(cat)}
+                >
+                  <Text style={[styles.filterChipText, { color: selectedCategory === cat ? '#ffffff' : colors.textSecondary }]}>
+                    {cat || 'All'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
-        </ScrollView>
-      )}
+
+          <View style={[styles.statusBar, { backgroundColor: colors.card }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusBarContent}>
+              {['', 'published', 'draft', 'cancelled'].map((status) => (
+                <TouchableOpacity
+                  key={status}
+                  style={[styles.statusChip, { backgroundColor: selectedStatus === status ? colors.primary : colors.surface }]}
+                  onPress={() => setSelectedStatus(status)}
+                >
+                  <Text style={[styles.statusChipText, { color: selectedStatus === status ? '#ffffff' : colors.textSecondary }]}>
+                    {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'All Status'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.content}>
+            {loading ? (
+              <View style={[styles.grid, { gap: 16 }]}>
+                {Array.from({ length: columns * 2 }).map((_, i) => (
+                  <View key={i} style={{ width: r.isMobile ? '100%' : `${100 / columns - (16 * (columns - 1)) / columns}%` }}>
+                    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>
+                      <LoadingSkeleton width="100%" height={140} borderRadius={0} />
+                      <View style={{ padding: 16 }}>
+                        <LoadingSkeleton width="70%" height={20} borderRadius={6} />
+                        <View style={{ height: 8 }} />
+                        <LoadingSkeleton width="40%" height={14} borderRadius={4} />
+                        <View style={{ height: 8 }} />
+                        <LoadingSkeleton width="100%" height={14} borderRadius={4} />
+                        <LoadingSkeleton width="80%" height={14} borderRadius={4} />
+                        <View style={{ height: 12 }} />
+                        <LoadingSkeleton width="100%" height={36} borderRadius={10} />
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : filteredEvents.length === 0 ? (
+              <EmptyState icon="📅" title="No Events Found" message="Create your first event or adjust your filters." />
+            ) : (
+              <View style={[styles.grid, { gap: 16 }]}>
+                {filteredEvents.map((event) => (
+                  <View key={event.id} style={{ width: r.isMobile ? '100%' : `${100 / columns - (16 * (columns - 1)) / columns}%` }}>
+                    {renderEventCard(event)}
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
 
       {renderFeedbackModal()}
 
@@ -525,21 +540,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  newBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+  contentContainer: {
+    paddingBottom: 40,
   },
-  newBtnText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
+  centeredContent: {
+    alignItems: 'center',
+  },
+  inner: {
+    width: '100%',
+  },
+  maxWidth: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  content: {
+    marginTop: 16,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   filterBar: {
     maxHeight: 60,
+    marginTop: 16,
   },
   filterBarContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingVertical: 10,
     gap: 8,
   },
@@ -557,7 +584,7 @@ const styles = StyleSheet.create({
     maxHeight: 50,
   },
   statusBarContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingVertical: 8,
     gap: 8,
   },
@@ -571,101 +598,118 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  eventsList: {
-    flex: 1,
-  },
-  eventsGrid: {
-    paddingVertical: 16,
-  },
-  gridContainer: {},
   card: {
     borderRadius: 20,
+    marginBottom: 16,
     overflow: 'hidden',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 4,
-  },
-  cardWeb: {
-    transition: 'transform 0.2s, box-shadow 0.2s',
+    elevation: 3,
+    borderWidth: StyleSheet.hairlineWidth,
+    ...(Platform.OS === 'web'
+      ? {
+          cursor: 'pointer' as any,
+          transitionProperty: 'transform, shadow-opacity',
+          transitionDuration: '200ms',
+        }
+      : {}),
   },
   cardImage: {
+    width: '100%',
     height: 140,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   cardImagePlaceholder: {
-    fontSize: 40,
+    width: '100%',
+    height: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryIcon: {
+    fontSize: 36,
   },
   cardBody: {
     padding: 16,
   },
-  cardTopRow: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardCategory: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
+    marginBottom: 10,
   },
   cardTitle: {
     fontSize: 17,
     fontWeight: '700',
-    marginBottom: 10,
-    lineHeight: 22,
+    flex: 1,
+    marginRight: 8,
   },
-  cardInfo: {
-    gap: 4,
-    marginBottom: 10,
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
-  cardInfoText: {
-    fontSize: 13,
-    lineHeight: 18,
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  cardStats: {
+  metaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 20,
     marginBottom: 8,
   },
-  reviewCount: {
-    fontSize: 12,
-    marginLeft: 6,
+  metaItem: {},
+  metaLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
   },
-  cardFooter: {
+  metaValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
     marginBottom: 12,
+    marginTop: 4,
   },
-  attendeeText: {
-    fontSize: 13,
-  },
-  cardActions: {
+  actionsRow: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-    paddingTop: 12,
     gap: 8,
   },
   actionBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
   },
   actionBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  deleteBtn: {
+    flex: 0.6,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+  },
+  deleteBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  plusBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  plusBtnText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
   },
   modalOverlay: {
     position: 'absolute',
