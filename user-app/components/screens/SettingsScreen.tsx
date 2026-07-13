@@ -1,36 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Switch,
-  Alert,
-  Linking,
-  Modal,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, Linking, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { languages } from '../../i18n';
 import { SettingsStackParamList } from '../../types/navigation';
+import { useResponsive, horizontalPadding } from '../../theme/responsive';
+import { typography, spacing, radius, shadow } from '../../theme/tokens';
+import { Button } from '../ui/Button';
 
 const NOTIFICATIONS_KEY = 'cuz_events_notifications';
-
 type SettingsNavProp = NativeStackNavigationProp<SettingsStackParamList>;
+
+function SettingsSection({ title, children, colors }: { title: string; children: React.ReactNode; colors: any }) {
+  return (
+    <View style={[shadow.sm, { backgroundColor: colors.card, marginHorizontal: 16, marginTop: spacing.lg, borderRadius: radius.xl, overflow: 'hidden' }]}>
+      <Text style={[typography.overline, { color: colors.textMuted, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xs }]}>
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function SettingsRow({ icon, label, sublabel, onPress, right, colors, danger }: {
+  icon: string; label: string; sublabel?: string; onPress?: () => void;
+  right?: React.ReactNode; colors: any; danger?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      activeOpacity={onPress ? 0.7 : 1}
+      onPress={onPress}
+      style={{
+        flexDirection: 'row', alignItems: 'center', padding: spacing.lg,
+        borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.md,
+      }}
+    >
+      <Text style={{ fontSize: 20, width: 28, textAlign: 'center' }}>{icon}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={[typography.label, { color: danger ? colors.danger : colors.text }]}>{label}</Text>
+        {sublabel && <Text style={[typography.caption, { color: colors.textMuted, marginTop: 2 }]}>{sublabel}</Text>}
+      </View>
+      {right || <Text style={[typography.body, { color: colors.textMuted }]}>›</Text>}
+    </TouchableOpacity>
+  );
+}
 
 export function SettingsScreen() {
   const navigation = useNavigation<SettingsNavProp>();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const { isDark, toggleDark, colors } = useTheme();
   const { language, setLanguage, t } = useLanguage();
+  const r = useResponsive();
+  const ph = horizontalPadding(r);
   const [notifications, setNotifications] = useState(true);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(NOTIFICATIONS_KEY).then(v => { if (v) setNotifications(v === 'true'); });
@@ -47,422 +77,117 @@ export function SettingsScreen() {
     Alert.alert(t('common.done'), t('settings.selectLanguage'));
   };
 
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
   const handleLogout = async () => {
     setShowLogoutConfirm(false);
     await logout();
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            Alert.alert('Account Deleted', 'Your account has been deleted.');
-          },
-        },
-      ]
-    );
+    Alert.alert('Delete Account', 'Are you sure you want to delete your account? This action cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => { logout(); Alert.alert('Account Deleted', 'Your account has been deleted.'); } },
+    ]);
   };
 
   const langLabel = languages.find(l => l.code === language)?.native || language;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={[styles.backText, { color: colors.headerText }]}>{'<'}</Text>
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', padding: ph, paddingTop: spacing.md }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: spacing.md, padding: spacing.xs }}>
+            <Text style={[typography.body, { color: colors.primary }]}>← {t('common.back')}</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.headerText }]}>{t('settings.title')}</Text>
+          <Text style={[typography.h2, { color: colors.text }]}>{t('settings.title')}</Text>
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('settings.account')}</Text>
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate('EditProfile')}>
-            <Text style={styles.menuIcon}>✏️</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.editProfile')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.editProfileSub')}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+        {/* Account */}
+        <SettingsSection title={t('settings.account')} colors={colors}>
+          <SettingsRow icon="✏️" label={t('settings.editProfile')} sublabel={t('settings.editProfileSub')} onPress={() => navigation.navigate('EditProfile')} colors={colors} />
+          <SettingsRow icon="🔒" label={t('settings.changePassword')} sublabel={t('settings.changePasswordSub')} onPress={() => navigation.navigate('ChangePassword')} colors={colors} />
+          <SettingsRow icon="🚪" label={t('settings.logOut')} sublabel={t('settings.logOutSub')} onPress={() => setShowLogoutConfirm(true)} colors={colors} />
+        </SettingsSection>
 
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate('ChangePassword')}>
-            <Text style={styles.menuIcon}>🔒</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.changePassword')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.changePasswordSub')}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+        {/* Preferences */}
+        <SettingsSection title={t('settings.preferences')} colors={colors}>
+          <SettingsRow icon="🌙" label={t('settings.darkMode')} sublabel={t('settings.darkModeSub')} colors={colors}
+            right={<Switch value={isDark} onValueChange={toggleDark} trackColor={{ false: colors.border, true: colors.primaryLight }} thumbColor={isDark ? colors.primary : colors.inputBg} />} />
+          <SettingsRow icon="🔔" label={t('settings.notifications')} sublabel={t('settings.notificationsSub')} colors={colors}
+            right={<Switch value={notifications} onValueChange={toggleNotifications} trackColor={{ false: colors.border, true: colors.primaryLight }} thumbColor={notifications ? colors.primary : colors.inputBg} />} />
+          <SettingsRow icon="🌐" label={t('settings.language')} sublabel={langLabel} onPress={() => setShowLanguagePicker(true)} colors={colors} />
+        </SettingsSection>
 
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => setShowLogoutConfirm(true)}>
-            <Text style={styles.menuIcon}>🚪</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.logOut')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.logOutSub')}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Privacy */}
+        <SettingsSection title={t('settings.privacy')} colors={colors}>
+          <SettingsRow icon="🛡️" label={t('settings.manageData')} sublabel={t('settings.manageDataSub')} onPress={() => Alert.alert(t('settings.manageData'), t('settings.manageDataSub'))} colors={colors} />
+          <SettingsRow icon="📄" label={t('settings.privacyPolicy')} sublabel={t('settings.privacyPolicySub')} onPress={() => Linking.openURL('https://cuzevents.com/privacy')} colors={colors} />
+          <SettingsRow icon="🗑️" label={t('settings.deleteAccount')} sublabel={t('settings.deleteAccountSub')} onPress={handleDeleteAccount} colors={colors} danger />
+        </SettingsSection>
 
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('settings.preferences')}</Text>
-          <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
-            <Text style={styles.menuIcon}>🌙</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.darkMode')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.darkModeSub')}</Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={toggleDark}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={isDark ? colors.primary : colors.inputBg}
-            />
-          </View>
-
-          <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
-            <Text style={styles.menuIcon}>🔔</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.notifications')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.notificationsSub')}</Text>
-            </View>
-            <Switch
-              value={notifications}
-              onValueChange={toggleNotifications}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={notifications ? colors.primary : colors.inputBg}
-            />
-          </View>
-
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => setShowLanguagePicker(true)}>
-            <Text style={styles.menuIcon}>🌐</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.language')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{langLabel}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('settings.privacy')}</Text>
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => Alert.alert(t('settings.manageData'), t('settings.manageDataSub'))}>
-            <Text style={styles.menuIcon}>🛡️</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.manageData')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.manageDataSub')}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => Linking.openURL('https://cuzevents.com/privacy')}>
-            <Text style={styles.menuIcon}>📄</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.privacyPolicy')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.privacyPolicySub')}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={handleDeleteAccount}>
-            <Text style={styles.menuIcon}>🗑️</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.danger }]}>{t('settings.deleteAccount')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.deleteAccountSub')}</Text>
-            </View>
-            <Text style={[styles.menuArrow, { color: colors.danger }]}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{t('settings.app')}</Text>
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => setShowAbout(true)}>
-            <Text style={styles.menuIcon}>ℹ️</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.aboutApp')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.aboutAppSub')}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => Linking.openURL('https://cuzevents.com/terms')}>
-            <Text style={styles.menuIcon}>📋</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.termsOfService')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.termsOfServiceSub')}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate('HelpSupport')}>
-            <Text style={styles.menuIcon}>❓</Text>
-            <View style={styles.menuText}>
-              <Text style={[styles.menuLabel, { color: colors.text }]}>{t('settings.helpSupport')}</Text>
-              <Text style={[styles.menuSubtext, { color: colors.textMuted }]}>{t('settings.helpSupportSub')}</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-        </View>
+        {/* App */}
+        <SettingsSection title={t('settings.app')} colors={colors}>
+          <SettingsRow icon="ℹ️" label={t('settings.aboutApp')} sublabel={t('settings.aboutAppSub')} onPress={() => setShowAbout(true)} colors={colors} />
+          <SettingsRow icon="📋" label={t('settings.termsOfService')} sublabel={t('settings.termsOfServiceSub')} onPress={() => Linking.openURL('https://cuzevents.com/terms')} colors={colors} />
+          <SettingsRow icon="❓" label={t('settings.helpSupport')} sublabel={t('settings.helpSupportSub')} onPress={() => navigation.navigate('HelpSupport')} colors={colors} />
+        </SettingsSection>
 
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* Language Picker Modal */}
       <Modal visible={showLanguagePicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('settings.selectLanguage')}</Text>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }}>
+          <View style={[shadow.xl, { backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.xl, paddingBottom: 40 }]}>
+            <Text style={[typography.h3, { color: colors.text, marginBottom: spacing.lg }]}>{t('settings.selectLanguage')}</Text>
             {languages.map(l => (
               <TouchableOpacity
                 key={l.code}
-                style={[styles.langOption, { borderBottomColor: colors.border }, language === l.code && { backgroundColor: colors.primaryLight }]}
                 onPress={() => changeLanguage(l.code)}
+                style={{
+                  flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                  paddingVertical: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border,
+                  backgroundColor: language === l.code ? colors.primaryLight : 'transparent',
+                  borderRadius: radius.lg, paddingHorizontal: spacing.md,
+                }}
               >
-                <Text style={[styles.langOptionText, { color: colors.text }, language === l.code && { color: colors.primary, fontWeight: '600' }]}>
-                  {l.native}
-                </Text>
-                {language === l.code && <Text style={[styles.langCheck, { color: colors.primary }]}>✓</Text>}
+                <Text style={[typography.body, { color: language === l.code ? colors.primary : colors.text }]}>{l.native}</Text>
+                {language === l.code && <Text style={[typography.body, { color: colors.primary }]}>✓</Text>}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={[styles.modalCloseButton, { backgroundColor: colors.inputBg }]} onPress={() => setShowLanguagePicker(false)}>
-              <Text style={[styles.modalCloseText, { color: colors.textMuted }]}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
+            <Button variant="outline" onPress={() => setShowLanguagePicker(false)} fullWidth style={{ marginTop: spacing.lg }}>
+              {t('common.cancel')}
+            </Button>
           </View>
         </View>
       </Modal>
 
+      {/* About Modal */}
       <Modal visible={showAbout} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('settings.aboutApp')}</Text>
-            <Text style={{ fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginTop: 8 }}>{t('profile.version')}</Text>
-            <Text style={{ fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginTop: 12 }}>
-              {t('app.tagline')}
-            </Text>
-            <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 22, marginTop: 12 }}>
-              {'\u00A9'} 2026 Cavendish University Zambia.
-            </Text>
-            <TouchableOpacity style={[styles.modalCloseButton, { backgroundColor: colors.inputBg }]} onPress={() => setShowAbout(false)}>
-              <Text style={[styles.modalCloseText, { color: colors.textMuted }]}>{t('common.close')}</Text>
-            </TouchableOpacity>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }}>
+          <View style={[shadow.xl, { backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.xl, paddingBottom: 40 }]}>
+            <Text style={[typography.h3, { color: colors.text, marginBottom: spacing.md }]}>{t('settings.aboutApp')}</Text>
+            <Text style={[typography.body, { color: colors.textSecondary, marginBottom: spacing.sm }]}>{t('profile.version')}</Text>
+            <Text style={[typography.body, { color: colors.textSecondary, marginBottom: spacing.md }]}>{t('app.tagline')}</Text>
+            <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.xl }]}>© 2026 Cavendish University Zambia.</Text>
+            <Button variant="outline" onPress={() => setShowAbout(false)} fullWidth>{t('common.close')}</Button>
           </View>
         </View>
       </Modal>
 
+      {/* Logout Confirm Modal */}
       <Modal visible={showLogoutConfirm} animationType="fade" transparent>
-        <View style={[styles.modalOverlay, { justifyContent: 'center' }]}>
-          <View style={[styles.logoutModal, { backgroundColor: colors.card }]}>
-            <Text style={[styles.logoutTitle, { color: colors.text }]}>{t('profile.logOut')}</Text>
-            <Text style={[styles.logoutMessage, { color: colors.textSecondary }]}>{t('profile.areYouSureLogout')}</Text>
-            <View style={styles.logoutButtons}>
-              <TouchableOpacity style={[styles.logoutCancelBtn, { backgroundColor: colors.inputBg }]} onPress={() => setShowLogoutConfirm(false)}>
-                <Text style={[styles.logoutCancelText, { color: colors.textMuted }]}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.logoutConfirmBtn, { backgroundColor: colors.danger }]} onPress={handleLogout}>
-                <Text style={[styles.logoutConfirmText, { color: '#fff' }]}>{t('profile.logOut')}</Text>
-              </TouchableOpacity>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={[shadow.xl, { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.xl, width: '80%', maxWidth: 320 }]}>
+            <Text style={[typography.h3, { color: colors.text, textAlign: 'center', marginBottom: spacing.sm }]}>{t('profile.logOut')}</Text>
+            <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl }]}>{t('profile.areYouSureLogout')}</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <Button variant="outline" onPress={() => setShowLogoutConfirm(false)} style={{ flex: 1 }}>{t('common.cancel')}</Button>
+              <Button variant="danger" onPress={handleLogout} style={{ flex: 1 }}>{t('profile.logOut')}</Button>
             </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  header: {
-    backgroundColor: '#2563eb',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 12,
-    padding: 4,
-  },
-  backText: {
-    fontSize: 24,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  section: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  menuIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    width: 24,
-    textAlign: 'center',
-  },
-  menuText: {
-    flex: 1,
-  },
-  menuLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1e293b',
-  },
-  menuSubtext: {
-    fontSize: 13,
-    color: '#94a3b8',
-    marginTop: 2,
-  },
-  menuArrow: {
-    fontSize: 20,
-    color: '#cbd5e1',
-    marginLeft: 8,
-  },
-  deleteText: {
-    color: '#ef4444',
-  },
-  deleteArrow: {
-    color: '#ef4444',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 16,
-  },
-  langOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    borderRadius: 12,
-  },
-  langOptionSelected: {
-    backgroundColor: '#dbeafe',
-  },
-  langOptionText: {
-    fontSize: 16,
-    color: '#1e293b',
-  },
-  langOptionTextSelected: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  langCheck: {
-    fontSize: 18,
-    color: '#2563eb',
-    fontWeight: '700',
-  },
-  modalCloseButton: {
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 8,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 20,
-  },
-  modalCloseText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  logoutModal: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    width: '80%',
-    maxWidth: 320,
-    alignItems: 'center',
-    marginHorizontal: 'auto',
-  },
-  logoutTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  logoutMessage: {
-    fontSize: 15,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  logoutButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  logoutCancelBtn: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 20,
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-  },
-  logoutCancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  logoutConfirmBtn: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 20,
-    alignItems: 'center',
-    backgroundColor: '#ef4444',
-  },
-  logoutConfirmText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-});

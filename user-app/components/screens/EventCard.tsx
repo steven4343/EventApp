@@ -1,48 +1,82 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Event } from '../../types';
+import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
+import { useResponsive } from '../../theme/responsive';
+import { radius, typography, spacing, shadow } from '../../theme/tokens';
 import { Badge } from '../ui/Badge';
 import { normalizeImage } from '../../utils/image';
 
 interface EventCardProps {
-  event: Event;
+  event: any;
   onPress: () => void;
+  onFavorite?: () => void;
+  isSaved?: boolean;
 }
 
-const categoryColors: Record<string, 'default' | 'success' | 'warning'> = {
-  Social: 'default',
-  Cultural: 'default',
-  Sports: 'success',
-  Academic: 'warning',
-  Entertainment: 'default',
-  Partnership: 'default',
-};
+export function EventCard({ event, onPress, onFavorite, isSaved }: EventCardProps) {
+  const { colors } = useTheme();
+  const r = useResponsive();
 
-export function EventCard({ event, onPress }: EventCardProps) {
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const formatDate = (date: string) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const formatPrice = (price: number) => {
+    if (!price || price === 0) return 'Free';
+    return `ZMW ${price}`;
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      <Image source={normalizeImage(event.image)} style={styles.image} resizeMode="contain" />
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Badge variant={categoryColors[event.category] || 'default'}>
-            {event.category}
-          </Badge>
-          <Text style={styles.date}>{formatDate(event.date)}</Text>
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={[styles.card, shadow.md, { backgroundColor: colors.card, borderRadius: radius.xl }]}>
+      <View style={styles.imageContainer}>
+        <Image
+          source={normalizeImage(event.image)}
+          style={[styles.image, { backgroundColor: colors.skeleton }]}
+          resizeMode="cover"
+        />
+        <View style={styles.imageOverlay}>
+          <Badge variant="primary" size="sm">{event.category || 'Event'}</Badge>
+          <TouchableOpacity
+            onPress={onFavorite}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.favoriteBtn}
+          >
+            <Text style={{ fontSize: 18 }}>{isSaved ? '❤️' : '🤍'}</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.title} numberOfLines={2}>{event.title}</Text>
-        <Text style={styles.location} numberOfLines={1}>{event.location}</Text>
-        <View style={styles.footer}>
-          <View style={styles.rating}>
-            <Text style={styles.ratingText}>★ {event.rating}</Text>
-            <Text style={styles.reviews}>({event.reviews})</Text>
+        {event.price === 0 && (
+          <View style={[styles.freeTag, { backgroundColor: colors.success }]}>
+            <Text style={[typography.overline, { color: '#fff' }]}>FREE</Text>
           </View>
-          <Text style={styles.price}>
-            {event.price === 0 ? 'Free' : `K${event.price}`}
+        )}
+      </View>
+
+      <View style={styles.info}>
+        <Text style={[typography.label, { color: colors.text }]} numberOfLines={2}>
+          {event.title}
+        </Text>
+
+        <View style={styles.metaRow}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>📅 {formatDate(event.date)}</Text>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>📍 {event.location || 'TBA'}</Text>
+        </View>
+
+        <View style={styles.bottomRow}>
+          <View style={styles.priceBadge}>
+            <Text style={[typography.label, { color: event.price === 0 ? colors.success : colors.primary }]}>
+              {formatPrice(event.price)}
+            </Text>
+          </View>
+          <View style={styles.ratingRow}>
+            <Text style={{ fontSize: 12 }}>⭐</Text>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              {event.rating ? event.rating.toFixed(1) : '0.0'}
+            </Text>
+          </View>
+          <Text style={[typography.caption, { color: colors.textMuted }]}>
+            {event.attendees || 0}/{event.maxCapacity || '∞'}
           </Text>
         </View>
       </View>
@@ -52,69 +86,60 @@ export function EventCard({ event, onPress }: EventCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 12,
-    marginHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    width: '47%',
+  },
+  imageContainer: {
+    position: 'relative',
   },
   image: {
     width: '100%',
-    height: 130,
-    backgroundColor: '#f1f5f9',
+    aspectRatio: 16 / 10,
   },
-  content: {
-    padding: 10,
-  },
-  header: {
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: spacing.md,
+  },
+  favoriteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
-    marginBottom: 6,
+    justifyContent: 'center',
   },
-  date: {
-    fontSize: 11,
-    color: '#64748b',
+  freeTag: {
+    position: 'absolute',
+    bottom: spacing.md,
+    left: spacing.md,
+    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.full,
   },
-  title: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
+  info: {
+    padding: spacing.md,
+    gap: spacing.xs,
   },
-  location: {
-    fontSize: 11,
-    color: '#64748b',
-    marginBottom: 8,
+  metaRow: {
+    gap: 2,
   },
-  footer: {
+  bottomRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    marginTop: spacing.xs,
   },
-  rating: {
+  priceBadge: {
+    backgroundColor: 'transparent',
+  },
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#f59e0b',
-  },
-  reviews: {
-    fontSize: 10,
-    color: '#94a3b8',
-    marginLeft: 2,
-  },
-  price: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2563eb',
+    gap: 3,
   },
 });

@@ -1,110 +1,102 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
+import { radius, typography, spacing, shadow, animation } from '../../theme/tokens';
 
 interface ButtonProps {
   children: React.ReactNode;
-  onPress?: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  onPress: () => void;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
+  icon?: React.ReactNode;
   style?: ViewStyle;
+  textStyle?: TextStyle;
+  fullWidth?: boolean;
 }
 
-export function Button({ 
-  children, 
-  onPress, 
-  variant = 'primary', 
+export function Button({
+  children,
+  onPress,
+  variant = 'primary',
   size = 'md',
   disabled = false,
   loading = false,
-  style 
+  icon,
+  style,
+  textStyle,
+  fullWidth = false,
 }: ButtonProps) {
+  const { colors } = useTheme();
   const isDisabled = disabled || loading;
-  
+
+  const getButtonStyle = (): ViewStyle => {
+    const base: ViewStyle = {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.lg,
+      gap: spacing.sm,
+    };
+
+    const sizes = {
+      sm: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, minHeight: 36 },
+      md: { paddingVertical: spacing.md, paddingHorizontal: spacing.xl, minHeight: 48 },
+      lg: { paddingVertical: spacing.lg, paddingHorizontal: spacing.xxl, minHeight: 56 },
+    };
+
+    const variants: Record<string, ViewStyle> = {
+      primary: { backgroundColor: colors.primary },
+      secondary: { backgroundColor: colors.primaryLight },
+      outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.border },
+      ghost: { backgroundColor: 'transparent' },
+      danger: { backgroundColor: colors.danger },
+    };
+
+    return {
+      ...base,
+      ...sizes[size],
+      ...variants[variant],
+      opacity: isDisabled ? 0.5 : 1,
+      ...(fullWidth ? { width: '100%' } : {}),
+    };
+  };
+
+  const getTextColor = (): string => {
+    switch (variant) {
+      case 'primary': return '#ffffff';
+      case 'secondary': return colors.primary;
+      case 'outline': return colors.text;
+      case 'ghost': return colors.primary;
+      case 'danger': return '#ffffff';
+      default: return '#ffffff';
+    }
+  };
+
+  const textSizes = {
+    sm: typography.buttonSmall,
+    md: typography.button,
+    lg: { ...typography.button, fontSize: 17 },
+  };
+
   return (
-    <TouchableOpacity 
-      style={[
-        styles.base,
-        styles[variant],
-        styles[`size_${size}`],
-        isDisabled ? styles.disabled : undefined,
-        style,
-      ]} 
+    <TouchableOpacity
+      activeOpacity={0.7}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.7}
+      style={[shadow.sm, getButtonStyle(), style]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? '#fff' : '#3b82f6'} />
+        <ActivityIndicator size="small" color={getTextColor()} />
       ) : (
-        <Text style={[
-          styles.text,
-          styles[`text_${variant}`],
-          styles[`text_${size}`],
-        ]}>{children}</Text>
+        <>
+          {icon}
+          <Text style={[{ color: getTextColor() }, textSizes[size], textStyle]}>
+            {children}
+          </Text>
+        </>
       )}
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primary: {
-    backgroundColor: '#2563eb',
-  },
-  secondary: {
-    backgroundColor: '#f1f5f9',
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
-  size_sm: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  size_md: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  size_lg: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  text: {
-    fontWeight: '600',
-  },
-  text_primary: {
-    color: '#fff',
-  },
-  text_secondary: {
-    color: '#1e293b',
-  },
-  text_outline: {
-    color: '#1e293b',
-  },
-  text_ghost: {
-    color: '#1e293b',
-  },
-  text_sm: {
-    fontSize: 14,
-  },
-  text_md: {
-    fontSize: 16,
-  },
-  text_lg: {
-    fontSize: 18,
-  },
-});

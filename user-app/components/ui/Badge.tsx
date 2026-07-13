@@ -1,66 +1,57 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
+import { radius, typography, spacing } from '../../theme/tokens';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'destructive';
-  style?: ViewStyle;
+  variant?: 'default' | 'primary' | 'secondary' | 'outline' | 'success' | 'warning' | 'danger';
+  size?: 'sm' | 'md';
+  style?: any;
 }
 
-export function Badge({ children, variant = 'default', style }: BadgeProps) {
+export function Badge({ children, variant = 'default', size = 'sm', style }: BadgeProps) {
+  const { colors } = useTheme();
+
+  const getColors = () => {
+    switch (variant) {
+      case 'primary': return { bg: colors.primaryLight, text: colors.primary };
+      case 'secondary': return { bg: colors.surface, text: colors.textSecondary };
+      case 'outline': return { bg: 'transparent', text: colors.textSecondary };
+      case 'success': return { bg: colors.successLight, text: colors.success };
+      case 'warning': return { bg: colors.warningLight, text: colors.warning };
+      case 'danger': return { bg: '#fef2f2', text: colors.danger };
+      default: return { bg: colors.surface, text: colors.textSecondary };
+    }
+  };
+
+  const { bg, text: textColor } = getColors();
+  const isSmall = size === 'sm';
+
   return (
-    <View style={[styles.badge, styles[variant], style]}>
-      <Text style={[styles.text, styles[`text_${variant}`]]}>{children}</Text>
+    <View
+      style={[
+        {
+          backgroundColor: bg,
+          borderRadius: radius.full,
+          alignSelf: 'flex-start',
+          borderWidth: variant === 'outline' ? 1 : 0,
+          borderColor: colors.border,
+        },
+        isSmall
+          ? { paddingVertical: 2, paddingHorizontal: spacing.sm }
+          : { paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
+        style,
+      ]}
+    >
+      <Text
+        style={[
+          isSmall ? typography.caption : typography.label,
+          { color: textColor },
+        ]}
+      >
+        {children}
+      </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  default: {
-    backgroundColor: '#dbeafe',
-  },
-  secondary: {
-    backgroundColor: '#f1f5f9',
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  success: {
-    backgroundColor: '#dcfce7',
-  },
-  warning: {
-    backgroundColor: '#fef3c7',
-  },
-  destructive: {
-    backgroundColor: '#fee2e2',
-  },
-  text: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  text_default: {
-    color: '#2563eb',
-  },
-  text_secondary: {
-    color: '#475569',
-  },
-  text_outline: {
-    color: '#475569',
-  },
-  text_success: {
-    color: '#16a34a',
-  },
-  text_warning: {
-    color: '#d97706',
-  },
-  text_destructive: {
-    color: '#dc2626',
-  },
-});

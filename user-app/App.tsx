@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, StyleSheet, AppState, Platform } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { requestPermissions, getExpoPushToken, getLastCheckTime, setLastCheckTime, notifyNewEvent } from './utils/notifications';
 import { addNotification } from './utils/notificationStore';
@@ -30,6 +30,8 @@ import { MyTicketsScreen } from './components/screens/MyTicketsScreen';
 import { SavedEventsScreen } from './components/screens/SavedEventsScreen';
 import { MyClubsScreen } from './components/screens/MyClubsScreen';
 import { MyReviewsScreen } from './components/screens/MyReviewsScreen';
+import { ResponsiveTabBar } from './components/navigation/ResponsiveTabBar';
+import { DesktopNav } from './components/navigation/DesktopNav';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -80,47 +82,39 @@ function ClubsStack({ requireAuth }: { requireAuth: () => void }) {
 }
 
 function HomeTabs({ requireAuth }: { requireAuth: () => void }) {
+  const { isDark } = useTheme();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
+
   return (
-    <Tab.Navigator
-      id="HomeTabs"
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: styles.tabBar,
-      }}
-    >
-      <Tab.Screen
-        name="EventsTab"
-        children={() => <EventsStack requireAuth={requireAuth} />}
-        options={{
-          tabBarLabel: 'Events',
-          tabBarIcon: ({ focused }) => <Text style={styles.tabIcon}>📅</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="Recommendations"
-        children={() => <RecommendationsScreen requireAuth={requireAuth} />}
-        options={{
-          tabBarLabel: 'Recommended',
-          tabBarIcon: ({ focused }) => <Text style={styles.tabIcon}>✨</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="ClubsTab"
-        children={() => <ClubsStack requireAuth={requireAuth} />}
-        options={{
-          tabBarLabel: 'Clubs',
-          tabBarIcon: ({ focused }) => <Text style={styles.tabIcon}>👥</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileStack}
-        options={{
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ focused }) => <Text style={styles.tabIcon}>👤</Text>,
-        }}
-      />
-    </Tab.Navigator>
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        id="HomeTabs"
+        screenOptions={{ headerShown: false }}
+        tabBar={(props) => <ResponsiveTabBar {...props} />}
+      >
+        <Tab.Screen
+          name="EventsTab"
+          children={() => <EventsStack requireAuth={requireAuth} />}
+          options={{ tabBarLabel: 'Events', tabBarIcon: () => null }}
+        />
+        <Tab.Screen
+          name="Recommendations"
+          children={() => <RecommendationsScreen requireAuth={requireAuth} />}
+          options={{ tabBarLabel: 'Recommended', tabBarIcon: () => null }}
+        />
+        <Tab.Screen
+          name="ClubsTab"
+          children={() => <ClubsStack requireAuth={requireAuth} />}
+          options={{ tabBarLabel: 'Clubs', tabBarIcon: () => null }}
+        />
+        <Tab.Screen
+          name="Profile"
+          component={ProfileStack}
+          options={{ tabBarLabel: 'Profile', tabBarIcon: () => null }}
+        />
+      </Tab.Navigator>
+    </View>
   );
 }
 
@@ -257,10 +251,10 @@ function AppContent() {
 
   const navTheme = isDark ? {
     ...DarkTheme,
-    colors: { ...DarkTheme.colors, background: '#0f172a', card: '#1e293b', text: '#f1f5f9', border: '#334155', primary: '#60a5fa' },
+    colors: { ...DarkTheme.colors, background: '#0f172a', card: '#1e293b', text: '#f1f5f9', border: '#334155', primary: '#6366f1' },
   } : {
     ...DefaultTheme,
-    colors: { ...DefaultTheme.colors, background: '#f8fafc', card: '#fff', text: '#1e293b', border: '#e2e8f0', primary: '#2563eb' },
+    colors: { ...DefaultTheme.colors, background: '#f5f5f7', card: '#ffffff', text: '#1e293b', border: '#e5e5ea', primary: '#6366f1' },
   };
 
   return (
@@ -289,17 +283,4 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingTop: 4,
-    paddingBottom: 24,
-    height: 80,
-  },
-  tabIcon: {
-    fontSize: 20,
-  },
-
-});
+const styles = StyleSheet.create({});
