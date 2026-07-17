@@ -9,7 +9,7 @@ export interface User {
   avatar: string;
   joinedAt: string;
   isActive: boolean;
-  role: 'student' | 'admin';
+  role: 'student' | 'organizer' | 'admin';
 }
 
 export interface Event {
@@ -27,7 +27,7 @@ export interface Event {
   maxCapacity: number;
   rating: number;
   reviews: number;
-  status: 'Published' | 'Draft' | 'Cancelled';
+  status: 'Published' | 'Draft' | 'Cancelled' | 'Pending' | 'Rejected';
   createdAt: string;
   createdBy: string;
 }

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from '
 import { useTheme } from '../../context/ThemeContext';
 import { useResponsive } from '../../theme/responsive';
 
-export type AdminTabKey = 'Dashboard' | 'Events' | 'Clubs' | 'Verify' | 'Payments' | 'Settings';
+export type AdminTabKey = 'Dashboard' | 'Events' | 'Pending' | 'Users' | 'Clubs' | 'Verify' | 'Payments' | 'Settings';
 
 interface TabDef {
   key: AdminTabKey;
@@ -14,6 +14,8 @@ interface TabDef {
 const TABS: TabDef[] = [
   { key: 'Dashboard', label: 'Dashboard', icon: '📊' },
   { key: 'Events', label: 'Events', icon: '📅' },
+  { key: 'Pending', label: 'Pending', icon: '⏳' },
+  { key: 'Users', label: 'Users', icon: '👤' },
   { key: 'Clubs', label: 'Clubs', icon: '👥' },
   { key: 'Verify', label: 'Scan', icon: '📷' },
   { key: 'Payments', label: 'Payments', icon: '💳' },

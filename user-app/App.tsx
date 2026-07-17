@@ -30,6 +30,8 @@ import { MyTicketsScreen } from './components/screens/MyTicketsScreen';
 import { SavedEventsScreen } from './components/screens/SavedEventsScreen';
 import { MyClubsScreen } from './components/screens/MyClubsScreen';
 import { MyReviewsScreen } from './components/screens/MyReviewsScreen';
+import { OrganizerCreateEventScreen } from './components/screens/OrganizerCreateEventScreen';
+import { OrganizerMyEventsScreen } from './components/screens/OrganizerMyEventsScreen';
 import { ResponsiveTabBar } from './components/navigation/ResponsiveTabBar';
 import { DesktopNav } from './components/navigation/DesktopNav';
 
@@ -81,28 +83,61 @@ function ClubsStack({ requireAuth }: { requireAuth: () => void }) {
   );
 }
 
+function OrganizerEventsStack() {
+  return (
+    <Stack.Navigator id="OrganizerEventsStack">
+      <Stack.Screen name="OrganizerMyEvents" component={OrganizerMyEventsScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+}
+
+function OrganizerCreateStack() {
+  return (
+    <Stack.Navigator id="OrganizerCreateStack">
+      <Stack.Screen name="OrganizerCreateEvent" component={OrganizerCreateEventScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+}
+
 function HomeTabs({ requireAuth }: { requireAuth: () => void }) {
   const { isDark } = useTheme();
+  const { user } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
+  const isOrganizer = user?.role === 'organizer';
 
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
         id="HomeTabs"
         screenOptions={{ headerShown: false }}
-        tabBar={(props) => <ResponsiveTabBar {...props} />}
+        tabBar={(props) => <ResponsiveTabBar {...props} role={user?.role} />}
       >
         <Tab.Screen
           name="EventsTab"
           children={() => <EventsStack requireAuth={requireAuth} />}
           options={{ tabBarLabel: 'Events', tabBarIcon: () => null }}
         />
-        <Tab.Screen
-          name="Recommendations"
-          children={() => <RecommendationsScreen requireAuth={requireAuth} />}
-          options={{ tabBarLabel: 'Recommended', tabBarIcon: () => null }}
-        />
+        {isOrganizer ? (
+          <>
+            <Tab.Screen
+              name="OrganizerEvents"
+              children={() => <OrganizerEventsStack />}
+              options={{ tabBarLabel: 'My Events', tabBarIcon: () => null }}
+            />
+            <Tab.Screen
+              name="OrganizerCreate"
+              children={() => <OrganizerCreateStack />}
+              options={{ tabBarLabel: 'Create', tabBarIcon: () => null }}
+            />
+          </>
+        ) : (
+          <Tab.Screen
+            name="Recommendations"
+            children={() => <RecommendationsScreen requireAuth={requireAuth} />}
+            options={{ tabBarLabel: 'Recommended', tabBarIcon: () => null }}
+          />
+        )}
         <Tab.Screen
           name="ClubsTab"
           children={() => <ClubsStack requireAuth={requireAuth} />}

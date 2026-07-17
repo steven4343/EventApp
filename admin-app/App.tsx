@@ -12,6 +12,9 @@ import EventsManagementScreen from './components/screens/EventsManagementScreen'
 import ClubsManagementScreen from './components/screens/ClubsManagementScreen';
 import VerifyScreen from './components/screens/VerifyScreen';
 import PaymentsManagementScreen from './components/screens/PaymentsManagementScreen';
+import PendingEventsScreen from './components/screens/PendingEventsScreen';
+import UserManagementScreen from './components/screens/UserManagementScreen';
+import ParticipationReportsScreen from './components/screens/ParticipationReportsScreen';
 import { SettingsScreen } from './components/screens/SettingsScreen';
 import { adminApi } from './api';
 import { connectSocket, disconnectSocket, getSocket } from './services/socket';
@@ -148,11 +151,31 @@ function AdminApp() {
       });
     };
 
+    const onEventApproved = (data: { eventId: string; title: string }) => {
+      pushNotification({
+        title: 'Event Approved',
+        body: data.title,
+        eventId: data.eventId,
+      });
+      triggerDataRefresh();
+    };
+
+    const onEventRejected = (data: { eventId: string; title: string }) => {
+      pushNotification({
+        title: 'Event Rejected',
+        body: data.title,
+        eventId: data.eventId,
+      });
+      triggerDataRefresh();
+    };
+
     socket.on('event:status', onEventStatus);
     socket.on('event:created', onEventCreated);
     socket.on('club:created', onClubCreated);
     socket.on('ticket:verified', onTicketVerified);
     socket.on('feedback:submitted', onFeedbackSubmitted);
+    socket.on('event:approved', onEventApproved);
+    socket.on('event:rejected', onEventRejected);
 
     return () => {
       socket.off('event:status', onEventStatus);
@@ -160,6 +183,8 @@ function AdminApp() {
       socket.off('club:created', onClubCreated);
       socket.off('ticket:verified', onTicketVerified);
       socket.off('feedback:submitted', onFeedbackSubmitted);
+      socket.off('event:approved', onEventApproved);
+      socket.off('event:rejected', onEventRejected);
     };
   }, [admin, pushNotification, triggerDataRefresh]);
 
@@ -188,6 +213,8 @@ function AdminApp() {
     switch (activeTab) {
       case 'Dashboard': return <DashboardScreen refreshKey={dataRefreshKey} />;
       case 'Events': return <EventsManagementScreen onDataChange={triggerDataRefresh} notifTrigger={notifTrigger} />;
+      case 'Pending': return <PendingEventsScreen onDataChange={triggerDataRefresh} notifTrigger={notifTrigger} />;
+      case 'Users': return <UserManagementScreen />;
       case 'Clubs': return <ClubsManagementScreen onDataChange={triggerDataRefresh} />;
       case 'Verify': return <VerifyScreen />;
       case 'Payments': return <PaymentsManagementScreen refreshKey={dataRefreshKey} />;

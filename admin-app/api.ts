@@ -284,6 +284,7 @@ class AdminApi {
         total: events.length,
         published: events.filter(e => e.status === 'Published').length,
         draft: events.filter(e => e.status === 'Draft').length,
+        pending: events.filter(e => e.status === 'Pending').length,
       },
       clubs: {
         total: clubs.length,
@@ -292,6 +293,68 @@ class AdminApi {
         inactive: clubs.filter(c => c.status === 'Inactive').length,
       },
     };
+  }
+
+  async getPendingEvents(): Promise<Event[]> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/events/pending`, { headers: this.authHeaders() }));
+    return res.json();
+  }
+
+  async approveEvent(eventId: string): Promise<any> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/events/${eventId}/approve`, {
+      method: 'PUT',
+      headers: this.authHeaders(),
+    }));
+    return res.json();
+  }
+
+  async rejectEvent(eventId: string, reason: string): Promise<any> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/events/${eventId}/reject`, {
+      method: 'PUT',
+      headers: this.authHeaders(),
+      body: JSON.stringify({ reason }),
+    }));
+    return res.json();
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/admin/users`, { headers: this.authHeaders() }));
+    return res.json();
+  }
+
+  async toggleUserActive(userId: string): Promise<any> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/admin/users/${userId}/toggle-active`, {
+      method: 'PUT',
+      headers: this.authHeaders(),
+    }));
+    return res.json();
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<any> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/admin/users/${userId}/role`, {
+      method: 'PUT',
+      headers: this.authHeaders(),
+      body: JSON.stringify({ role }),
+    }));
+    return res.json();
+  }
+
+  async deleteUser(userId: string): Promise<any> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: this.authHeaders(),
+    }));
+    return res.json();
+  }
+
+  async getEventParticipants(eventId: string): Promise<any> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/events/${eventId}/participants`, { headers: this.authHeaders() }));
+    return res.json();
+  }
+
+  async getEventReport(): Promise<any[]> {
+    const res = await this.checkAuth(await fetch(`${BASE_URL}/admin/events/report`, { headers: this.authHeaders() }));
+    return res.json();
   }
 }
 

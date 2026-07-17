@@ -45,6 +45,13 @@ const STATS_CONFIG = [
     bg: "rgba(245, 158, 11, 0.1)",
   },
   {
+    key: "pendingEvents",
+    icon: "⏳",
+    label: "Pending Approval",
+    color: "#F97316",
+    bg: "rgba(249, 115, 22, 0.1)",
+  },
+  {
     key: "activeClubs",
     icon: "🏛️",
     label: "Active Clubs",

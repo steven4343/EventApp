@@ -7,19 +7,30 @@ import { typography, spacing, radius, shadow } from '../../theme/tokens';
 interface ResponsiveTabBarProps {
   state: any;
   navigation: any;
+  role?: string;
 }
 
-const tabConfig: Record<string, { label: string; icon: string }> = {
+const defaultTabConfig: Record<string, { label: string; icon: string }> = {
   EventsTab: { label: 'Events', icon: '📅' },
   Recommendations: { label: 'Discover', icon: '✨' },
   ClubsTab: { label: 'Clubs', icon: '👥' },
   Profile: { label: 'Profile', icon: '👤' },
 };
 
-export function ResponsiveTabBar({ state, navigation }: ResponsiveTabBarProps) {
+const organizerTabConfig: Record<string, { label: string; icon: string }> = {
+  EventsTab: { label: 'Events', icon: '📅' },
+  OrganizerEvents: { label: 'My Events', icon: '📋' },
+  OrganizerCreate: { label: 'Create', icon: '➕' },
+  ClubsTab: { label: 'Clubs', icon: '👥' },
+  Profile: { label: 'Profile', icon: '👤' },
+};
+
+export function ResponsiveTabBar({ state, navigation, role }: ResponsiveTabBarProps) {
   const { colors } = useTheme();
   const r = useResponsive();
   const isDesktop = r.width >= 900;
+
+  const tabConfig = role === 'organizer' ? organizerTabConfig : defaultTabConfig;
 
   if (isDesktop) {
     const ph = horizontalPadding(r);

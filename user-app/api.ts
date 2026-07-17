@@ -115,7 +115,7 @@ class UserApi {
     return user;
   }
 
-  async register(userData: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number }) {
+  async register(userData: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number; role?: string }) {
     const res = await fetch(`${BASE_URL}/users/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -464,6 +464,24 @@ class UserApi {
       });
     }
     return ticket;
+  }
+
+  async getOrganizerEvents() {
+    if (!this.currentUser) return [];
+    const res = await fetch(`${BASE_URL}/events/organizer/mine`, { headers: this.authHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  async createEvent(eventData: any) {
+    if (!this.currentUser) throw new Error('Not logged in');
+    const res = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: this.authHeaders(),
+      body: JSON.stringify(eventData),
+    });
+    if (!res.ok) throw new Error('Failed to create event');
+    return res.json();
   }
 }
 

@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcrypt';
 import pool from './db';
 import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
 
@@ -18,6 +19,8 @@ class Database {
     await pool.query(sql5);
     const sql6 = fs.readFileSync(path.join(__dirname, 'migrations', '006_published_at.sql'), 'utf-8');
     await pool.query(sql6);
+    const sql7 = fs.readFileSync(path.join(__dirname, 'migrations', '007_organizer_approval.sql'), 'utf-8');
+    await pool.query(sql7);
     console.log('Database initialized');
   }
 
@@ -37,15 +40,20 @@ class Database {
   }
 
   async authenticateUser(email: string, password: string): Promise<User | undefined> {
-    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1 AND password = $2', [email, password]);
-    return rows.length ? mapUser(rows[0]) : undefined;
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (rows.length === 0) return undefined;
+    const user = mapUser(rows[0]);
+    if (!user.password) return undefined;
+    const match = await bcrypt.compare(password, user.password);
+    return match ? user : undefined;
   }
 
   async createUser(user: User): Promise<void> {
+    const hashedPassword = user.password ? await bcrypt.hash(user.password, 10) : '';
     await pool.query(
       `INSERT INTO users (id, name, email, student_id, password, faculty, year, avatar, joined_at, is_active, role, provider, avatar_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-      [user.id, user.name, user.email, user.studentId, user.password, user.faculty, user.year, user.avatar, user.joinedAt, user.isActive, user.role, user.provider || null, user.avatarUrl || null]
+      [user.id, user.name, user.email, user.studentId, hashedPassword, user.faculty, user.year, user.avatar, user.joinedAt, user.isActive, user.role, user.provider || null, user.avatarUrl || null]
     );
   }
 
@@ -369,6 +377,69 @@ class Database {
     return rows.map(r => r.token);
   }
 
+  async getEventsByCreator(createdBy: string): Promise<Event[]> {
+    const { rows } = await pool.query(
+      'SELECT * FROM events WHERE created_by = $1 ORDER BY created_at DESC',
+      [createdBy]
+    );
+    return rows.map(mapEvent);
+  }
+
+  async getPendingEvents(): Promise<Event[]> {
+    const { rows } = await pool.query(
+      "SELECT * FROM events WHERE status = 'Pending' ORDER BY created_at DESC"
+    );
+    return rows.map(mapEvent);
+  }
+
+  async approveEvent(eventId: string, approvedBy: string): Promise<void> {
+    await pool.query(
+      "UPDATE events SET status = 'Published', approved_by = $1, approved_at = NOW(), updated_at = NOW() WHERE id = $2",
+      [approvedBy, eventId]
+    );
+  }
+
+  async rejectEvent(eventId: string, approvedBy: string, reason: string): Promise<void> {
+    await pool.query(
+      "UPDATE events SET status = 'Rejected', rejection_reason = $1, approved_by = $2, updated_at = NOW() WHERE id = $3",
+      [reason, approvedBy, eventId]
+    );
+  }
+
+  async getEventsByStatus(status: string): Promise<Event[]> {
+    const { rows } = await pool.query(
+      'SELECT * FROM events WHERE status = $1 ORDER BY created_at DESC',
+      [status]
+    );
+    return rows.map(mapEvent);
+  }
+
+  async getEventAttendees(eventId: string): Promise<any[]> {
+    const { rows } = await pool.query(
+      `SELECT t.*, u.name, u.email, u.student_id, u.faculty, u.year
+       FROM tickets t
+       JOIN users u ON u.id = t.user_id
+       WHERE t.event_id = $1
+       ORDER BY t.purchased_at DESC`,
+      [eventId]
+    );
+    return rows;
+  }
+
+  async getEventsWithAttendeeCount(): Promise<any[]> {
+    const { rows } = await pool.query(`
+      SELECT e.*, COUNT(t.id) as registered_count,
+             COALESCE(AVG(ur.rating), 0) as avg_rating,
+             COUNT(DISTINCT ur.id) as review_count
+      FROM events e
+      LEFT JOIN tickets t ON t.event_id = e.id
+      LEFT JOIN user_reviews ur ON ur.item_id = e.id AND ur.item_type = 'event'
+      GROUP BY e.id
+      ORDER BY e.created_at DESC
+    `);
+    return rows;
+  }
+
   async reset(): Promise<void> {
     await pool.query('DELETE FROM images');
     await pool.query('DELETE FROM user_reviews');
@@ -436,6 +507,9 @@ function mapEvent(row: any): Event {
     createdBy: row.created_by,
     updatedAt: row.updated_at,
     publishedAt: row.published_at,
+    rejectionReason: row.rejection_reason || '',
+    approvedBy: row.approved_by || '',
+    approvedAt: row.approved_at || '',
   };
 }
 
@@ -458,6 +532,9 @@ function mapEventUpdate(e: Partial<Event>): Record<string, any> {
   if (e.createdBy !== undefined) fields.created_by = e.createdBy;
   if (e.updatedAt !== undefined) fields.updated_at = e.updatedAt;
   if (e.publishedAt !== undefined) fields.published_at = e.publishedAt;
+  if (e.rejectionReason !== undefined) fields.rejection_reason = e.rejectionReason;
+  if (e.approvedBy !== undefined) fields.approved_by = e.approvedBy;
+  if (e.approvedAt !== undefined) fields.approved_at = e.approvedAt;
   return fields;
 }
 

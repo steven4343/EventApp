@@ -38,6 +38,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
   const [studentId, setStudentId] = useState('');
   const [faculty, setFaculty] = useState('');
   const [year, setYear] = useState('1');
+  const [selectedRole, setSelectedRole] = useState<'student' | 'organizer'>('student');
   const [loading, setLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
@@ -91,7 +92,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
     setLoading(true);
     try {
       const success = await authRegister({
-        name, email, studentId, password, faculty, year: parseInt(year) || 1,
+        name, email, studentId, password, faculty, year: parseInt(year) || 1, role: selectedRole,
       });
       if (!success) {
         Alert.alert(t('login.registrationFailed'), t('login.somethingWentWrong'));
@@ -225,6 +226,34 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
 
                   <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>{t('login.yearOfStudy')}</Text>
                   <TextInput style={inputStyle()} placeholder="1" placeholderTextColor={colors.textMuted} value={year} onChangeText={setYear} keyboardType="number-pad" />
+
+                  <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>I am registering as</Text>
+                  <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md }}>
+                    <TouchableOpacity
+                      onPress={() => setSelectedRole('student')}
+                      style={{
+                        flex: 1, padding: spacing.md, borderRadius: radius.lg,
+                        borderWidth: 2, borderColor: selectedRole === 'student' ? colors.primary : colors.border,
+                        backgroundColor: selectedRole === 'student' ? (colors.primary + '15') : colors.inputBg,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 24, marginBottom: spacing.xs }}>🎓</Text>
+                      <Text style={[typography.label, { color: selectedRole === 'student' ? colors.primary : colors.text }]}>Student</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setSelectedRole('organizer')}
+                      style={{
+                        flex: 1, padding: spacing.md, borderRadius: radius.lg,
+                        borderWidth: 2, borderColor: selectedRole === 'organizer' ? colors.primary : colors.border,
+                        backgroundColor: selectedRole === 'organizer' ? (colors.primary + '15') : colors.inputBg,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 24, marginBottom: spacing.xs }}>📋</Text>
+                      <Text style={[typography.label, { color: selectedRole === 'organizer' ? colors.primary : colors.text }]}>Organizer</Text>
+                    </TouchableOpacity>
+                  </View>
                 </>
               )}
 
@@ -249,7 +278,7 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
               <TouchableOpacity
                 onPress={() => {
                   setIsRegister(!isRegister);
-                  setEmail(''); setPassword(''); setName(''); setStudentId(''); setFaculty(''); setYear('1');
+                  setEmail(''); setPassword(''); setName(''); setStudentId(''); setFaculty(''); setYear('1'); setSelectedRole('student');
                 }}
                 style={{ alignItems: 'center', marginTop: spacing.lg }}
               >

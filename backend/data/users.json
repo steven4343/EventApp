@@ -24,5 +24,57 @@
     "joinedAt": "2020-01-01",
     "isActive": true,
     "role": "admin"
+  },
+  {
+    "id": "organizer_001",
+    "name": "Grace Mwamba",
+    "email": "grace.mwamba@student.cavendish.co.zm",
+    "studentId": "CUZ/2024/050",
+    "password": "organizer123",
+    "faculty": "Computer Science",
+    "year": 3,
+    "avatar": "https://picsum.photos/seed/grace/200",
+    "joinedAt": "2024-02-01",
+    "isActive": true,
+    "role": "organizer"
+  },
+  {
+    "id": "organizer_002",
+    "name": "David Banda",
+    "email": "david.banda@student.cavendish.co.zm",
+    "studentId": "CUZ/2024/075",
+    "password": "organizer123",
+    "faculty": "Engineering",
+    "year": 4,
+    "avatar": "https://picsum.photos/seed/david/200",
+    "joinedAt": "2024-01-20",
+    "isActive": true,
+    "role": "organizer"
+  },
+  {
+    "id": "user_002",
+    "name": "Sarah Tembo",
+    "email": "sarah.tembo@student.cavendish.co.zm",
+    "studentId": "CUZ/2025/012",
+    "password": "password123",
+    "faculty": "Law",
+    "year": 2,
+    "avatar": "https://picsum.photos/seed/sarah/200",
+    "joinedAt": "2025-01-10",
+    "isActive": true,
+    "role": "student"
+  },
+  {
+    "id": "user_003",
+    "name": "Peter Phiri",
+    "email": "peter.phiri@student.cavendish.co.zm",
+    "studentId": "CUZ/2024/033",
+    "password": "password123",
+    "faculty": "Medicine",
+    "year": 4,
+    "avatar": "https://picsum.photos/seed/peter/200",
+    "joinedAt": "2024-03-01",
+    "isActive": true,
+    "role": "student"
   }
 ]

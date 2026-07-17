@@ -16,12 +16,13 @@ export interface UserProfile {
   faculty?: string;
   year?: number;
   avatar?: string;
+  role?: string;
 }
 
 interface AuthContextType {
   user: UserProfile | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (data: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number }) => Promise<boolean>;
+  register: (data: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number; role?: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -132,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           faculty: apiUser.faculty,
           year: apiUser.year,
           avatar: apiUser.avatar,
+          role: apiUser.role,
         };
         setUser(profile);
         userApi.setCurrentUser(profile);
@@ -146,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (data: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number }): Promise<boolean> => {
+  const register = async (data: { name: string; email: string; password: string; studentId?: string; faculty?: string; year?: number; role?: string }): Promise<boolean> => {
     try {
       const apiUser = await userApi.register(data);
       if (apiUser) {
@@ -158,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           faculty: apiUser.faculty,
           year: apiUser.year,
           avatar: apiUser.avatar,
+          role: apiUser.role,
         };
         setUser(profile);
         userApi.setCurrentUser(profile);
@@ -214,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           faculty: apiUser.faculty,
           year: apiUser.year,
           avatar: apiUser.avatar,
+          role: apiUser.role,
         };
         setUser(profile);
         userApi.setCurrentUser(profile);

@@ -4,8 +4,10 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { database } from './database';
+import pool from './db';
 import { User, Event, Club, Ticket, SavedEvent, UserClub, UserReview, Image } from './types';
 import { getFirebaseAuth } from './firebase';
 import { OAuth2Client } from 'google-auth-library';
@@ -15,6 +17,7 @@ import {
   clearTokenCookie,
   authenticate,
   optionalAuth,
+  authorize,
 } from './auth';
 
 const app = express();
@@ -234,7 +237,7 @@ app.get('/api/users', async (_req, res) => {
 });
 
 app.post('/api/users/register', async (req, res) => {
-  const { name, email, password, studentId, faculty, year } = req.body;
+  const { name, email, password, studentId, faculty, year, role } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Name, email, and password are required' });
@@ -245,18 +248,21 @@ app.post('/api/users/register', async (req, res) => {
     return res.status(400).json({ error: 'Email already registered' });
   }
 
+  const userRole = (role === 'organizer') ? 'organizer' : 'student';
+  const hashedPassword = await bcrypt.hash(password, 10);
+
   const newUser: User = {
     id: `user_${uuidv4()}`,
     name,
     email,
     studentId: studentId || '',
-    password,
+    password: hashedPassword,
     faculty: faculty || '',
     year: year || 1,
     avatar: 'https://picsum.photos/seed/user/200',
     joinedAt: new Date().toISOString().split('T')[0],
     isActive: true,
-    role: 'student',
+    role: userRole,
   };
 
   await database.createUser(newUser);
@@ -441,9 +447,15 @@ app.post('/api/events', authenticate, async (req, res) => {
     event.createdBy = req.user!.id;
     event.createdAt = now.split('T')[0];
     event.updatedAt = now;
-    if (event.status === 'Published') {
-      event.publishedAt = now;
+
+    if (req.user!.role === 'admin') {
+      if (event.status === 'Published') {
+        event.publishedAt = now;
+      }
+    } else {
+      event.status = 'Pending';
     }
+
     await database.addEvent(event);
     io.emit('event:created', { id: event.id, title: event.title, status: event.status, timestamp: new Date().toISOString() });
     if (event.status === 'Published') {
@@ -1045,6 +1057,217 @@ app.get('/api/stats', async (_req, res) => {
   const stats = await database.getStats();
   res.json(stats);
 });
+
+// ==================== ORGANIZER ROUTES ====================
+
+app.get('/api/events/organizer/mine', authenticate, async (req, res) => {
+  try {
+    const events = await database.getEventsByCreator(req.user!.id);
+    for (const event of events) {
+      const images = await database.getImagesByEntity('event', event.id);
+      if (images.length > 0) event.image = images[0].imageData;
+    }
+    res.json(events);
+  } catch (e: any) {
+    console.error('Failed to fetch organizer events:', e);
+    res.status(500).json({ error: 'Failed to fetch organizer events' });
+  }
+});
+
+// ==================== ADMIN APPROVAL ROUTES ====================
+
+app.get('/api/events/pending', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const events = await database.getPendingEvents();
+    for (const event of events) {
+      const images = await database.getImagesByEntity('event', event.id);
+      if (images.length > 0) event.image = images[0].imageData;
+    }
+    res.json(events);
+  } catch (e: any) {
+    console.error('Failed to fetch pending events:', e);
+    res.status(500).json({ error: 'Failed to fetch pending events' });
+  }
+});
+
+app.put('/api/events/:id/approve', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await database.getEventById(id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    if (event.status !== 'Pending') return res.status(400).json({ error: 'Event is not pending' });
+
+    await database.approveEvent(id, req.user!.id);
+    const updated = await database.getEventById(id);
+    if (updated) {
+      sendPushNotifications('Event Approved', updated.title);
+      emitStatusChange({ id: updated.id, title: updated.title, status: 'Published' });
+      io.emit('event:approved', { eventId: updated.id, title: updated.title, timestamp: new Date().toISOString() });
+    }
+    res.json({ message: 'Event approved', event: updated });
+  } catch (e: any) {
+    console.error('Failed to approve event:', e);
+    res.status(500).json({ error: 'Failed to approve event' });
+  }
+});
+
+app.put('/api/events/:id/reject', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const event = await database.getEventById(id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    if (event.status !== 'Pending') return res.status(400).json({ error: 'Event is not pending' });
+
+    await database.rejectEvent(id, req.user!.id, reason || '');
+    const updated = await database.getEventById(id);
+    if (updated) {
+      emitStatusChange({ id: updated.id, title: updated.title, status: 'Rejected' });
+      io.emit('event:rejected', { eventId: updated.id, title: updated.title, reason: reason || '', timestamp: new Date().toISOString() });
+    }
+    res.json({ message: 'Event rejected', event: updated });
+  } catch (e: any) {
+    console.error('Failed to reject event:', e);
+    res.status(500).json({ error: 'Failed to reject event' });
+  }
+});
+
+// ==================== ADMIN USER MANAGEMENT ====================
+
+app.get('/api/admin/users', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    let users = await database.getUsers();
+    users = await Promise.all(users.map(u => enrichUserAvatar(u))) as User[];
+    res.json(users.map(sanitizeUser));
+  } catch (e: any) {
+    console.error('Failed to fetch users:', e);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+app.put('/api/admin/users/:id/toggle-active', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await database.getUserById(id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role === 'admin') return res.status(400).json({ error: 'Cannot deactivate admin users' });
+
+    await database.updateUser(id, { isActive: !user.isActive });
+    const updated = await database.getUserById(id);
+    res.json({ message: `User ${updated?.isActive ? 'activated' : 'deactivated'}`, user: sanitizeUser(updated!) });
+  } catch (e: any) {
+    console.error('Failed to toggle user:', e);
+    res.status(500).json({ error: 'Failed to toggle user status' });
+  }
+});
+
+app.put('/api/admin/users/:id/role', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    if (!['student', 'organizer', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+    const user = await database.getUserById(id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    await database.updateUser(id, { role });
+    const updated = await database.getUserById(id);
+    res.json({ message: 'Role updated', user: sanitizeUser(updated!) });
+  } catch (e: any) {
+    console.error('Failed to update role:', e);
+    res.status(500).json({ error: 'Failed to update role' });
+  }
+});
+
+app.delete('/api/admin/users/:id', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await database.getUserById(id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role === 'admin') return res.status(400).json({ error: 'Cannot delete admin users' });
+
+    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    res.json({ message: 'User deleted' });
+  } catch (e: any) {
+    console.error('Failed to delete user:', e);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+// ==================== ADMIN PARTICIPATION REPORTS ====================
+
+app.get('/api/events/:id/participants', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await database.getEventById(id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    const attendees = await database.getEventAttendees(id);
+    const reviews = await database.getReviewsByEvent(id);
+    res.json({
+      event: { id: event.id, title: event.title, date: event.date, status: event.status },
+      participants: attendees,
+      stats: {
+        totalRegistered: attendees.length,
+        maxCapacity: event.maxCapacity,
+        totalReviews: reviews.length,
+        averageRating: event.rating,
+      },
+    });
+  } catch (e: any) {
+    console.error('Failed to fetch participants:', e);
+    res.status(500).json({ error: 'Failed to fetch participants' });
+  }
+});
+
+app.get('/api/admin/events/report', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const events = await database.getEventsWithAttendeeCount();
+    res.json(events.map(e => ({
+      id: e.id,
+      title: e.title,
+      date: e.date,
+      status: e.status,
+      category: e.category,
+      registeredCount: parseInt(e.registered_count) || 0,
+      maxCapacity: e.max_capacity,
+      avgRating: parseFloat(e.avg_rating) || 0,
+      reviewCount: parseInt(e.review_count) || 0,
+    })));
+  } catch (e: any) {
+    console.error('Failed to fetch event report:', e);
+    res.status(500).json({ error: 'Failed to fetch event report' });
+  }
+});
+
+// ==================== SCHEDULED REMINDERS ====================
+
+async function checkAndSendReminders(): Promise<void> {
+  try {
+    const events = await database.getEventsByStatus('Published');
+    const now = new Date();
+
+    for (const event of events) {
+      if (!event.date || !event.time) continue;
+      const eventDateTime = new Date(`${event.date}T${event.time}`);
+      const diffMs = eventDateTime.getTime() - now.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+
+      if (diffHours > 0 && diffHours <= 1) {
+        sendPushNotifications('Event Starting Soon!', `${event.title} starts in 1 hour at ${event.location}`);
+      } else if (diffHours > 1 && diffHours <= 24) {
+        sendPushNotifications('Event Tomorrow', `${event.title} is tomorrow at ${event.time} in ${event.location}`);
+      }
+    }
+  } catch (e) {
+    console.error('Reminder check failed:', e);
+  }
+}
+
+setInterval(checkAndSendReminders, 60 * 60 * 1000);
+
+// ==================== ADMIN IMPORTS FOR POOL ====================
 
 // Global error handler
 app.use((err: any, _req: any, res: any, _next: any) => {
