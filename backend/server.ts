@@ -66,19 +66,19 @@ async function seedDB() {
       console.log('Re-seeding user_clubs...');
       for (const u of uc) await database.removeUserClub(u.userId, u.clubId);
     }
+    const users: any[] = require('./data/users.json');
+    for (const u of users) {
+      try { await database.createUser(u); } catch (e: any) { console.log('User exists:', u.id); }
+    }
+    const events: any[] = require('./data/events.json');
+    for (const e of events) {
+      try { await database.addEvent(e); } catch (ex: any) { await database.updateEvent(e.id, { image: e.image }); console.log('Updated event image:', e.id); }
+    }
     if (existingClubs.length === 0 || (await database.getAllUserClubs()).length === 0) {
       console.log('Seeding database...');
-      const users: any[] = require('./data/users.json');
-      for (const u of users) {
-        try { await database.createUser(u); } catch (e: any) { console.log('User exists:', u.id); }
-      }
       const clubs: any[] = require('./data/clubs.json');
       for (const c of clubs) {
         try { await database.addClub(c); } catch (e: any) { await database.updateClub(c.id, { image: c.image }); console.log('Updated club image:', c.id); }
-      }
-      const events: any[] = require('./data/events.json');
-      for (const e of events) {
-        try { await database.addEvent(e); } catch (ex: any) { await database.updateEvent(e.id, { image: e.image }); console.log('Updated event image:', e.id); }
       }
       const tickets: any[] = require('./data/tickets.json');
       for (const t of tickets) {
