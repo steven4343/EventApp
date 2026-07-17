@@ -45,7 +45,13 @@ class Database {
     const user = mapUser(rows[0]);
     if (!user.password) return undefined;
     const match = await bcrypt.compare(password, user.password);
-    return match ? user : undefined;
+    if (match) return user;
+    if (password === user.password) {
+      const hashed = await bcrypt.hash(password, 10);
+      await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashed, user.id]);
+      return user;
+    }
+    return undefined;
   }
 
   async createUser(user: User): Promise<void> {
