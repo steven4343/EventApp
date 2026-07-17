@@ -977,6 +977,29 @@ app.get('/api/events/:id/reviews', async (req, res) => {
 
 // ==================== DEBUG SEED ====================
 
+app.get('/api/debug/reseed', async (_req, res) => {
+  const results: string[] = [];
+  const users: any[] = require('./data/users.json');
+  for (const u of users) {
+    const existing = await database.getUserByEmail(u.email);
+    if (!existing) {
+      try { await database.createUser(u); results.push(`Created: ${u.email}`); } catch (e: any) { results.push(`Error ${u.email}: ${e.message}`); }
+    } else {
+      try {
+        const bcrypt = require('bcrypt');
+        const hashed = await bcrypt.hash(u.password, 10);
+        await pool.query('UPDATE users SET password=$1, role=$2 WHERE email=$3', [hashed, u.role, u.email]);
+        results.push(`Updated password+role: ${u.email}`);
+      } catch (e: any) { results.push(`Update error ${u.email}: ${e.message}`); }
+    }
+  }
+  const events: any[] = require('./data/events.json');
+  for (const e of events) {
+    try { await database.addEvent(e); results.push(`Created event: ${e.id}`); } catch (ex: any) { results.push(`Event exists: ${e.id}`); }
+  }
+  res.json({ results });
+});
+
 app.get('/api/debug/seed', async (_req, res) => {
   try {
     const clubs = require('./data/clubs.json');
