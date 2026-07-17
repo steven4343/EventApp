@@ -120,9 +120,9 @@ class Database {
 
   async addEvent(event: Event): Promise<void> {
     await pool.query(
-      `INSERT INTO events (id, title, date, time, location, category, club_id, description, image, price, attendees, max_capacity, rating, reviews, status, created_at, created_by, updated_at, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-      [event.id, event.title, event.date, event.time, event.location, event.category, event.clubId, event.description, event.image, event.price, event.attendees, event.maxCapacity, event.rating, event.reviews, event.status, event.createdAt, event.createdBy, event.updatedAt, event.publishedAt]
+      `INSERT INTO events (id, title, date, time, location, category, club_id, description, image, price, attendees, max_capacity, rating, reviews, status, created_at, created_by, updated_at, published_at, rejection_reason)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+      [event.id, event.title, event.date, event.time, event.location, event.category, event.clubId, event.description, event.image, event.price, event.attendees, event.maxCapacity, event.rating, event.reviews, event.status, event.createdAt, event.createdBy, event.updatedAt, event.publishedAt, event.rejectionReason || '']
     );
   }
 
