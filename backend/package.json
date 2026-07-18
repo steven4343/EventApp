@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn server.ts",
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').cpSync('data','dist/data',{recursive:true});require('fs').cpSync('migrations','dist/migrations',{recursive:true})\"",
     "seed": "ts-node seed.ts",
     "seed-images": "ts-node update-images.ts",
     "migrate": "ts-node migrate.ts"
