@@ -977,6 +977,11 @@ app.get('/api/events/:id/reviews', async (req, res) => {
 
 // ==================== DEBUG SEED ====================
 
+app.get('/api/debug/users', async (_req, res) => {
+  const { rows } = await pool.query('SELECT id, email, role, LEFT(password, 10) as password_prefix, is_active FROM users ORDER BY id');
+  res.json(rows);
+});
+
 app.get('/api/debug/reseed', async (_req, res) => {
   const results: string[] = [];
   const users: any[] = require('./data/users.json');
