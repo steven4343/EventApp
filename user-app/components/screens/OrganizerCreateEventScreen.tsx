@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  Image,
   KeyboardAvoidingView,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
@@ -16,8 +15,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useResponsive } from '../../theme/responsive';
 import { typography, spacing, radius, shadow } from '../../theme/tokens';
 import { userApi } from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
-const CATEGORIES = ['Social', 'Cultural', 'Sports', 'Academic', 'Entertainment', 'Partnership'];
+const CATEGORIES = ['Social', 'Cultural', 'Sports', 'Academic', 'Entertainment', 'Partnership', 'Workshop', 'Conference'];
 
 const LOCATIONS = [
   'Lusaka National Museum',
@@ -30,6 +30,7 @@ const LOCATIONS = [
   'Manda Hill Mall',
   'Lilayi Lodge',
   'Chaminuka Lodge',
+  'Cavendish University Campus',
   'Custom Location',
 ];
 
@@ -48,10 +49,13 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
   const { colors } = useTheme();
   const { t } = useLanguage();
   const r = useResponsive();
+  const { user } = useAuth();
 
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('09:00 AM');
+  const [selectedEndTime, setSelectedEndTime] = useState('05:00 PM');
   const [location, setLocation] = useState('');
   const [customLocation, setCustomLocation] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -59,9 +63,14 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
   const [maxCapacity, setMaxCapacity] = useState('');
   const [selectedClubId, setSelectedClubId] = useState('');
   const [description, setDescription] = useState('');
+  const [contactEmail, setContactEmail] = useState(user?.email || '');
+  const [contactPhone, setContactPhone] = useState('');
+  const [eventWebsite, setEventWebsite] = useState('');
+  const [organizerName, setOrganizerName] = useState(user?.name || '');
   const [clubs, setClubs] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showClubPicker, setShowClubPicker] = useState(false);
 
@@ -82,7 +91,7 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
       return;
     }
     if (!date.trim()) {
-      Alert.alert('Required', 'Please enter a date (YYYY-MM-DD).');
+      Alert.alert('Required', 'Please enter a start date (YYYY-MM-DD).');
       return;
     }
     if (!selectedCategory) {
@@ -100,13 +109,18 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
       await userApi.createEvent({
         title: title.trim(),
         date,
-        time: selectedTime,
+        time: `${selectedTime} - ${selectedEndTime}`,
         location: finalLocation.trim(),
         category: selectedCategory,
         price: price ? parseFloat(price) : 0,
         maxCapacity: maxCapacity ? parseInt(maxCapacity, 10) : 0,
         clubId: selectedClubId || undefined,
         description: description.trim(),
+        contactEmail: contactEmail.trim(),
+        contactPhone: contactPhone.trim(),
+        eventWebsite: eventWebsite.trim(),
+        organizerName: organizerName.trim(),
+        endDate: endDate.trim() || undefined,
       });
       Alert.alert('Submitted', 'Your event has been submitted for admin approval.', [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -145,9 +159,9 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.md, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: spacing.md, padding: spacing.xs }}>
-          <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+          <Text style={{ fontSize: 24, color: colors.text }}>&#8592;</Text>
         </TouchableOpacity>
-        <Text style={[typography.h3, { color: colors.text, flex: 1 }]}>Create Event</Text>
+        <Text style={[typography.h3, { color: colors.text, flex: 1 }]}>Submit New Event</Text>
       </View>
 
       <ScrollView
@@ -155,41 +169,91 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
         keyboardShouldPersistTaps="handled"
       >
         <View style={[shadow.md, { backgroundColor: colors.card, borderRadius: radius.xxl, padding: spacing.xl }]}>
-          <Text style={[typography.bodySmall, { color: colors.primary, marginBottom: spacing.md, textAlign: 'center' }]}>
-            Your event will be submitted for admin approval before publishing.
-          </Text>
+          <View style={{ backgroundColor: colors.primary + '10', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg }}>
+            <Text style={[typography.bodySmall, { color: colors.primary, textAlign: 'center' }]}>
+              Your event will be reviewed by the admin team before publishing. You will be notified once a decision is made.
+            </Text>
+          </View>
 
-          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Title *</Text>
-          <TextInput style={inputStyle} placeholder="Event title" placeholderTextColor={colors.textMuted} value={title} onChangeText={setTitle} />
+          <Text style={[typography.h4, { color: colors.text, marginBottom: spacing.md }]}>Event Details</Text>
 
-          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Date * (YYYY-MM-DD)</Text>
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Event Title *</Text>
+          <TextInput style={inputStyle} placeholder="Enter event title" placeholderTextColor={colors.textMuted} value={title} onChangeText={setTitle} />
+
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Category *</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            {CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1.5, backgroundColor: selectedCategory === cat ? colors.primary : colors.inputBg, borderColor: selectedCategory === cat ? colors.primary : colors.border }}
+              >
+                <Text style={{ color: selectedCategory === cat ? '#fff' : colors.textSecondary, fontSize: 13, fontWeight: '500' }}>{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[typography.h4, { color: colors.text, marginBottom: spacing.md, marginTop: spacing.xl }]}>Schedule</Text>
+
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Start Date * (YYYY-MM-DD)</Text>
           <TextInput style={inputStyle} placeholder={today} placeholderTextColor={colors.textMuted} value={date} onChangeText={setDate} keyboardType="numbers-and-punctuation" />
 
-          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Time</Text>
-          <TouchableOpacity style={pickerRowStyle} onPress={() => setShowTimePicker(!showTimePicker)}>
-            <Text style={{ color: colors.text, fontSize: 16 }}>{selectedTime}</Text>
-            <Text style={{ color: colors.textMuted }}>▾</Text>
-          </TouchableOpacity>
-          {showTimePicker && (
-            <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, marginTop: spacing.xs, padding: spacing.sm, maxHeight: 200 }}>
-              <ScrollView nestedScrollEnabled>
-                {TIME_SLOTS.map((slot) => (
-                  <TouchableOpacity
-                    key={slot}
-                    onPress={() => { setSelectedTime(slot); setShowTimePicker(false); }}
-                    style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.sm, backgroundColor: selectedTime === slot ? colors.primary + '15' : 'transparent' }}
-                  >
-                    <Text style={{ color: selectedTime === slot ? colors.primary : colors.text, fontWeight: selectedTime === slot ? '600' : '400' }}>{slot}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>End Date (YYYY-MM-DD)</Text>
+          <TextInput style={inputStyle} placeholder="Optional" placeholderTextColor={colors.textMuted} value={endDate} onChangeText={setEndDate} keyboardType="numbers-and-punctuation" />
+
+          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs }]}>Start Time</Text>
+              <TouchableOpacity style={pickerRowStyle} onPress={() => setShowTimePicker(!showTimePicker)}>
+                <Text style={{ color: colors.text, fontSize: 14 }}>{selectedTime}</Text>
+                <Text style={{ color: colors.textMuted }}>&#9662;</Text>
+              </TouchableOpacity>
+              {showTimePicker && (
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, marginTop: spacing.xs, padding: spacing.sm, maxHeight: 200 }}>
+                  <ScrollView nestedScrollEnabled>
+                    {TIME_SLOTS.map((slot) => (
+                      <TouchableOpacity
+                        key={slot}
+                        onPress={() => { setSelectedTime(slot); setShowTimePicker(false); }}
+                        style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.sm, backgroundColor: selectedTime === slot ? colors.primary + '15' : 'transparent' }}
+                      >
+                        <Text style={{ color: selectedTime === slot ? colors.primary : colors.text, fontWeight: selectedTime === slot ? '600' : '400', fontSize: 14 }}>{slot}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
-          )}
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs }]}>End Time</Text>
+              <TouchableOpacity style={pickerRowStyle} onPress={() => setShowEndTimePicker(!showEndTimePicker)}>
+                <Text style={{ color: colors.text, fontSize: 14 }}>{selectedEndTime}</Text>
+                <Text style={{ color: colors.textMuted }}>&#9662;</Text>
+              </TouchableOpacity>
+              {showEndTimePicker && (
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, marginTop: spacing.xs, padding: spacing.sm, maxHeight: 200 }}>
+                  <ScrollView nestedScrollEnabled>
+                    {TIME_SLOTS.map((slot) => (
+                      <TouchableOpacity
+                        key={slot}
+                        onPress={() => { setSelectedEndTime(slot); setShowEndTimePicker(false); }}
+                        style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.sm, backgroundColor: selectedEndTime === slot ? colors.primary + '15' : 'transparent' }}
+                      >
+                        <Text style={{ color: selectedEndTime === slot ? colors.primary : colors.text, fontWeight: selectedEndTime === slot ? '600' : '400', fontSize: 14 }}>{slot}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <Text style={[typography.h4, { color: colors.text, marginBottom: spacing.md, marginTop: spacing.xl }]}>Venue</Text>
 
           <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Location *</Text>
           <TouchableOpacity style={pickerRowStyle} onPress={() => setShowLocationPicker(!showLocationPicker)}>
-            <Text style={{ color: location ? colors.text : colors.textMuted, fontSize: 16 }} numberOfLines={1}>{location || 'Select location'}</Text>
-            <Text style={{ color: colors.textMuted }}>▾</Text>
+            <Text style={{ color: location ? colors.text : colors.textMuted, fontSize: 16 }} numberOfLines={1}>{location || 'Select venue'}</Text>
+            <Text style={{ color: colors.textMuted }}>&#9662;</Text>
           </TouchableOpacity>
           {showLocationPicker && (
             <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, marginTop: spacing.xs, padding: spacing.sm, maxHeight: 300 }}>
@@ -207,39 +271,30 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
             </View>
           )}
           {location === 'Custom Location' && (
-            <TextInput style={[inputStyle, { marginTop: spacing.sm }]} placeholder="Enter custom location" placeholderTextColor={colors.textMuted} value={customLocation} onChangeText={setCustomLocation} />
+            <TextInput style={[inputStyle, { marginTop: spacing.sm }]} placeholder="Enter venue address" placeholderTextColor={colors.textMuted} value={customLocation} onChangeText={setCustomLocation} />
           )}
 
-          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Category *</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                onPress={() => setSelectedCategory(cat)}
-                style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1.5, backgroundColor: selectedCategory === cat ? colors.primary : colors.inputBg, borderColor: selectedCategory === cat ? colors.primary : colors.border }}
-              >
-                <Text style={{ color: selectedCategory === cat ? '#fff' : colors.textSecondary, fontSize: 13, fontWeight: '500' }}>{cat}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={[typography.h4, { color: colors.text, marginBottom: spacing.md, marginTop: spacing.xl }]}>Capacity & Pricing</Text>
 
-          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
             <View style={{ flex: 1 }}>
-              <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs }]}>Price (ZMW)</Text>
+              <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs }]}>Ticket Price (ZMW)</Text>
               <TextInput style={inputStyle} placeholder="0.00" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" value={price} onChangeText={setPrice} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs }]}>Max Capacity</Text>
+              <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs }]}>Max Attendees</Text>
               <TextInput style={inputStyle} placeholder="Unlimited" placeholderTextColor={colors.textMuted} keyboardType="number-pad" value={maxCapacity} onChangeText={setMaxCapacity} />
             </View>
           </View>
 
-          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Club (Optional)</Text>
+          <Text style={[typography.h4, { color: colors.text, marginBottom: spacing.md, marginTop: spacing.xl }]}>Organization</Text>
+
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Organizer / Club Affiliation</Text>
           <TouchableOpacity style={pickerRowStyle} onPress={() => setShowClubPicker(!showClubPicker)}>
             <Text style={{ color: selectedClubId ? colors.text : colors.textMuted, fontSize: 16 }}>
               {clubs.find((c) => c.id === selectedClubId)?.name || 'No club selected'}
             </Text>
-            <Text style={{ color: colors.textMuted }}>▾</Text>
+            <Text style={{ color: colors.textMuted }}>&#9662;</Text>
           </TouchableOpacity>
           {showClubPicker && (
             <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, marginTop: spacing.xs, padding: spacing.sm, maxHeight: 200 }}>
@@ -263,13 +318,28 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
             </View>
           )}
 
-          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Description</Text>
+          <Text style={[typography.h4, { color: colors.text, marginBottom: spacing.md, marginTop: spacing.xl }]}>Contact Information</Text>
+
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Contact Person</Text>
+          <TextInput style={inputStyle} placeholder="Your name" placeholderTextColor={colors.textMuted} value={organizerName} onChangeText={setOrganizerName} autoCapitalize="words" />
+
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Contact Email</Text>
+          <TextInput style={inputStyle} placeholder="organizer@example.com" placeholderTextColor={colors.textMuted} value={contactEmail} onChangeText={setContactEmail} keyboardType="email-address" autoCapitalize="none" />
+
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Contact Phone</Text>
+          <TextInput style={inputStyle} placeholder="+260 97X XXX XXX" placeholderTextColor={colors.textMuted} value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" />
+
+          <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Event Website (Optional)</Text>
+          <TextInput style={inputStyle} placeholder="https://" placeholderTextColor={colors.textMuted} value={eventWebsite} onChangeText={setEventWebsite} keyboardType="url" autoCapitalize="none" />
+
+          <Text style={[typography.h4, { color: colors.text, marginBottom: spacing.md, marginTop: spacing.xl }]}>Description</Text>
+
           <TextInput
-            style={[inputStyle, { minHeight: 100, paddingTop: spacing.md }]}
-            placeholder="Describe your event..."
+            style={[inputStyle, { minHeight: 120, paddingTop: spacing.md }]}
+            placeholder="Describe your event in detail — objectives, agenda, target audience, what attendees can expect..."
             placeholderTextColor={colors.textMuted}
             multiline
-            numberOfLines={4}
+            numberOfLines={5}
             textAlignVertical="top"
             value={description}
             onChangeText={setDescription}

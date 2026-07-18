@@ -218,13 +218,13 @@ export function LoginScreen({ onCancel }: LoginScreenProps) {
                   <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>{t('login.fullName')}</Text>
                   <TextInput style={inputStyle()} placeholder="John Doe" placeholderTextColor={colors.textMuted} value={name} onChangeText={setName} autoCapitalize="words" />
 
-                  <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>{t('login.studentId')}</Text>
+                  <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>{t('login.studentId')} {selectedRole === 'organizer' ? '(Optional)' : ''}</Text>
                   <TextInput style={inputStyle()} placeholder="CUZ/2024/001" placeholderTextColor={colors.textMuted} value={studentId} onChangeText={setStudentId} />
 
                   <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>{t('login.faculty')}</Text>
-                  <TextInput style={inputStyle()} placeholder="Business" placeholderTextColor={colors.textMuted} value={faculty} onChangeText={setFaculty} />
+                  <TextInput style={inputStyle()} placeholder={selectedRole === 'organizer' ? 'Organization / Department' : 'Business'} placeholderTextColor={colors.textMuted} value={faculty} onChangeText={setFaculty} />
 
-                  <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>{t('login.yearOfStudy')}</Text>
+                  <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>{t('login.yearOfStudy')} {selectedRole === 'organizer' ? '(Optional)' : ''}</Text>
                   <TextInput style={inputStyle()} placeholder="1" placeholderTextColor={colors.textMuted} value={year} onChangeText={setYear} keyboardType="number-pad" />
 
                   <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>I am registering as</Text>
