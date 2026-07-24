@@ -9,7 +9,9 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useResponsive } from '../../theme/responsive';
@@ -68,6 +70,7 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
   const [eventWebsite, setEventWebsite] = useState('');
   const [organizerName, setOrganizerName] = useState(user?.name || '');
   const [clubs, setClubs] = useState<any[]>([]);
+  const [eventImage, setEventImage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
@@ -83,6 +86,23 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
       const clubData = await userApi.getClubs();
       setClubs(clubData);
     } catch {}
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.7,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.base64) {
+        const ext = asset.mimeType?.includes('png') ? 'png' : 'jpeg';
+        setEventImage(`data:image/${ext};base64,${asset.base64}`);
+      }
+    }
   };
 
   const handleSubmit = async () => {
@@ -121,6 +141,7 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
         eventWebsite: eventWebsite.trim(),
         organizerName: organizerName.trim(),
         endDate: endDate.trim() || undefined,
+        image: eventImage || '',
       });
       Alert.alert('Submitted', 'Your event has been submitted for admin approval.', [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -176,6 +197,14 @@ export function OrganizerCreateEventScreen({ navigation, route }: OrganizerCreat
           </View>
 
           <Text style={[typography.h4, { color: colors.text, marginBottom: spacing.md }]}>Event Details</Text>
+
+          <TouchableOpacity onPress={pickImage} style={{ width: 50, height: 50, borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, backgroundColor: colors.inputBg, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+            {eventImage ? (
+              <Image source={{ uri: eventImage }} style={{ width: 50, height: 50, borderRadius: radius.md }} />
+            ) : (
+              <Text style={{ fontSize: 20, color: colors.textMuted }}>+</Text>
+            )}
+          </TouchableOpacity>
 
           <Text style={[typography.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Event Title *</Text>
           <TextInput style={inputStyle} placeholder="Enter event title" placeholderTextColor={colors.textMuted} value={title} onChangeText={setTitle} />
