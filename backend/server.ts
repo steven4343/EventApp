@@ -457,6 +457,17 @@ app.post('/api/events', authenticate, async (req, res) => {
     }
 
     await database.addEvent(event);
+
+    if (event.image && event.image.startsWith('data:')) {
+      await database.addImage({
+        id: `img_${uuidv4()}`,
+        entityType: 'event',
+        entityId: event.id,
+        imageData: event.image,
+        createdAt: now,
+      });
+    }
+
     io.emit('event:created', { id: event.id, title: event.title, status: event.status, timestamp: new Date().toISOString() });
     if (event.status === 'Published') {
       sendPushNotifications('New Event Posted', event.title);
